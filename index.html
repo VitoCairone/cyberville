@@ -1,0 +1,77 @@
+<HTML>
+    <head>
+    <style>
+        #birdseye {
+            left: 4px;
+            top: 40px;
+            /* width: 80%;
+            height: 80%;
+            border: 2px solid black; */
+        }
+        .path-tile {
+            position: absolute;
+            width: 28px;
+            height: 14px; /* height: 17px; */
+            background-image: url("./sprites/path_tile.gif");
+        }
+        .path-tile.blue {
+            background-position-x: 28px;
+        }
+        .navi {
+            width: 28px;
+            height: 37px;
+            left: 0px; /* 14 - width/2 */
+            bottom: 16px;
+            background-image: url("./sprites/proto_stand.gif");
+            z-index: 100;
+            position: absolute;
+        }
+        .navi.Rock {
+            width: 17px;
+            height: 32px;
+            left: 5px; /* 14 - width/2 */
+            bottom: 16px;
+            background-image: url("./sprites/rock_stand.gif");
+            z-index: 100;
+            position: absolute;
+        }
+        .crystal {
+            width: 24px;
+            height: 61px;
+            background-image: url("./sprites/green_crystal.gif");
+            left: 2px; /* 14 - width/2 */
+            bottom: 4px;
+            position: absolute;
+            z-index: 50;
+        }
+        .resonance-0 .crystal { background-position-x: 0px; }
+
+        .resonance-1 .crystal { background-position-x: 24px; }
+        .resonance-2 .crystal { background-position-x: 48px; }
+        .resonance-3 .crystal { background-position-x: 72px; }
+        .resonance-4 .crystal { background-position-x: 96px; }
+        .resonance-5 .crystal { background-position-x: 120px; }
+        .resonance-6 .crystal { background-position-x: 144px; }
+        .resonance-7 .crystal { background-position-x: 168px; }
+
+        .resonance-1 .crystal.small { background-position-x: 12px; }
+        .resonance-2 .crystal.small { background-position-x: 24px; }
+        .resonance-3 .crystal.small { background-position-x: 36px; }
+        .resonance-4 .crystal.small { background-position-x: 48px; }
+        .resonance-5 .crystal.small { background-position-x: 60px; }
+        .resonance-6 .crystal.small { background-position-x: 72px; }
+        .resonance-7 .crystal.small { background-position-x: 84px; }
+    </style>
+    </head>
+    
+    <body>
+        <div id="birdseye" class="resonance-0" style="position: absolute;">
+            <div id="sprite-layer" class="layer" style="position: absolute; width: 100%; height: 100%;">
+            </div>
+        </div>
+    </body>
+
+    <script type="text/javascript" src="./index.js"></script>
+    </script>
+
+    </HTML>
