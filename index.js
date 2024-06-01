@@ -76,6 +76,65 @@ var world = {
   resonanceFrame: 0
 }
 
+function naviIdFor(x) {
+  // conceptually this method should return an id set
+  // by the navi itself, e.g. in encounter order,
+  // pragmatically that can be delayed until it matters
+  return x.id || x.name || x.div.id || null;
+}
+
+// in-dev method -- not yet called
+function naviLook(navi) {
+  // TODO: make this work in all directions, prototyped for NE-facing
+  // for now just see 6 forward (including own row) and 3 wide, i.e. no spread
+  // add spread in the future
+  for (var j = 0; j >= -5; j--) {
+    for (var i = -1; i <= 1; i++) {
+      var tile = getTileAtShift(navi.onTile, i, j)
+      see.tiles.push({
+        id: naviIdFor(),
+        fwd: -j,
+        lat: i,
+        isBlue: tile.isBlue,
+        contents: tile.contents.map(thing => {
+          return {
+            type: thing.type,
+            id: naviIdFor(thing)
+          };
+        });
+      });
+    }
+  }
+}
+
+const refWalkSpeed = mphToTpt(3);
+const refRunSpeed = mphToTpt(7);
+const refNaviMassKg = 75;
+
+function naviListen(navi) {
+  // as with collision detection we'll just run O(n^2) compares
+  // since n is currently small
+  var heard = {};
+  world.navis.forEach(other => {
+    if (other === navi || other.speed === 0) return;
+    // todo: when tracking navi power spend on movement, pay sound tax
+    // for now hear any navi moving within sight distance forward
+    // and in all directions
+    var aCtr, bCtr = [getCenter(navi), getCenter(thing)];
+    var x, y = [aCtr[0] - bCtr[0], aCtr[1] - bCtr[1]];
+
+    var audibleDist = 5;
+    // sound energy should scale with power. Just use power when implemented.
+    audibleDist *= Math.pow(other.speed / refWalkSpeed, 3) * other.mass / naviRefMass;
+
+    var distL2 = x * x + y * y;
+    if (distL2 <= audibleDist * audibleDist) heard.push({
+      type: other.type,
+      id: naviIdFor(other)
+    });
+  });
+}
+
 function applyTickToNavi(navi) {
   // TODO: consider refactoring these HeldTks to LastTp to reduce updates on every tick
   navi.pose.frameHeldTks += 1;
