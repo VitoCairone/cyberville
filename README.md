@@ -1,2 +1,2 @@
 # cyberville
-a place for navis
+A place for navis
