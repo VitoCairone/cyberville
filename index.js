@@ -92,7 +92,8 @@ var world = {
   northTile: null,
   westTile: null,
   tileMins: [Infinity, Infinity],
-  tileMaxs: [-Infinity, -Infinity]
+  tileMaxs: [-Infinity, -Infinity],
+  cameraNavi: null
 }
 
 function naviIdFor(x) {
@@ -390,6 +391,7 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
   startTile.contents.push(navi);
   setPose(navi, 'walk');
   world.navis.push(navi);
+  if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
 var startTileP = getTileAtIj(1, 4);
@@ -520,11 +522,8 @@ function updateThingSpritePos(thing) {
   var halfWidth = thing.pose.size[0] / 2; // TODO: read this from div style
   var ctr = getCenter(thing);
 
-  // works when northTile = 0, 0 and westTileI = 0
-  // TODO: check for other cases!!
-  var offX = 14 * (world.westTile.j - world.westTile.i + 1);
-
-  var offY = 160; // offY for the bottom edge, since we align sprites using bottom
+  var offX = 14 * (world.westTile.j + 1);
+  var offY = 160; // offY for the bottom edge
 
   thing.div.style.left = `${Math.round(offX + 14 * (ctr[0] - ctr[1])) - halfWidth}px`;
   thing.div.style.bottom =`${Math.round(offY - (7 * (ctr[0] + ctr[1])))}px`;
