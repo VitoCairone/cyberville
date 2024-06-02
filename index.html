@@ -9,6 +9,20 @@
             border: 1px solid blue;
             /* overflow: hidden; */
         }
+        #camera-layer {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            width: 240px;
+            height: 160px;
+        }
+        #sprite-layer {
+            top: 0px;
+            left: 0px;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
         .path-tile {
             position: absolute;
             width: 28px;
@@ -46,7 +60,6 @@
             z-index: 50;
         }
         .resonance-0 .crystal { background-position-x: 0px; }
-
         .resonance-1 .crystal { background-position-x: 24px; }
         .resonance-2 .crystal { background-position-x: 48px; }
         .resonance-3 .crystal { background-position-x: 72px; }
@@ -65,9 +78,13 @@
     </style>
     </head>
     
-    <body>
-        <div id="birdseye" class="resonance-0" style="position: absolute;">
-            <div id="sprite-layer" class="layer" style="position: absolute; width: 100%; height: 100%;">
+    <body>    
+        </div>
+        <div id="camera-layer"> <!-- overflow: hidden blocks content out of view -->
+            <div id="world-layer"> <!-- THIS layer scrolls with camera's in-world movement -->
+                <!-- layers within world-layer don't need to scroll with camera -->
+                <div id="tile-layer"></div>
+                <div id="sprite-layer" class="resonance-0"></div>
             </div>
         </div>
     </body>

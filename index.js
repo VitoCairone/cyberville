@@ -12,7 +12,7 @@ function metersToPx(x) { return x * 28 / root2; }
 function pxToMeters(x) { return x * root2 / 28; }
 function isRat(x) { return x >= 0 && x < 1 };
 function prodSqrs(a, b) { return a * a + b * b; }
-const viewDiagM = pxToMeters(Math.sqrt(prodSqrs(...canvSize)));
+// const viewDiagM = pxToMeters(Math.sqrt(prodSqrs(...canvSize)));
 
 // TODOS
 // * replace .color with bools .isBlue (tile) and .isTeamB (navi) --DONE
@@ -33,26 +33,31 @@ const zoneMap = [ // note these values get read right-to-left
   0b111111111111111111111111111,
   0b111000000000111000000000111,
   0b111000000000111000000000111,
+  
   0b111000000000111000000000111,
   0b111000000000111000000000111,
   0b111000000000111000000000111,
   0b111000000000111000000000111,
   0b111000000000111100000000111,
+
   0b111000000000111110000000111,
   0b111000000000111111000000111,
   0b111111111111111111111111111,
   0b111111111111111111111111111,
   0b111111111111111111111111111,
+
   0b111000000111111000000000111,
   0b111000000011111000000000111,
   0b111000000001111000000000111,
   0b111000000000111000000000111,
   0b111000000000111000000000111,
+
   0b111000000000111000000000111,
   0b111000000000111000000000111,
   0b111000000000111000000000111,
   0b111000000000111000000000111,
   0b111111111111111111111111111,
+
   0b111111111111111111111111111,
   0b111111111111111111111111111
 ];
@@ -62,8 +67,9 @@ var pickupSound = new Audio('./sounds/pickup.mp3');
 var isFullStop = false;
 var anchorTop = 0;
 var anchorLeft = (nj - 1) * 14;
-var birdseyeEl = document.getElementById('birdseye');
-var spriteLayer = document.getElementById('sprite-layer');
+const worldLayer = document.getElementById('world-layer');
+const spriteLayer = document.getElementById('sprite-layer');
+const tileLayer = document.getElementById('tile-layer');
 const dirNames = ['NN', 'NE', 'EE', 'SE', 'SS', 'SW', 'WW', 'NW'];
 const shifts = [
   [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]
@@ -82,7 +88,11 @@ var world = {
   nextCrystalId: 0,
   nextShotId: 0,
   tick: 0,
-  resonanceFrame: 0
+  resonanceFrame: 0,
+  northTile: null,
+  westTile: null,
+  tileMins: [Infinity, Infinity],
+  tileMaxs: [-Infinity, -Infinity]
 }
 
 function naviIdFor(x) {
@@ -92,45 +102,26 @@ function naviIdFor(x) {
   return x.id || x.name || x.div.id || null;
 }
 
-function isThingInView(thing, camCtrIj) {
-  if (!thing || !thing.div) fullStop("invalid thing to isThingInView");
-  // const spriteSize = [thing.div.style.width, thing.div.style.height];
+// untested & unused
+// function isThingCtrInView(thing, camCtrIj) {
+//   if (!thing || !thing.div) fullStop("invalid thing to isThingCtrInView");
   
-  // is thing center in view
-  var viewLoI = camCtrIj[0] - viewDiagM / 2;
-  var viewHiI = camCtrIj[0] + viewDiagM / 2;
-  var viewLoJ = camCtrIj[1] - viewDiagM / 2;
-  var viewHiJ = camCtrIj[1] + viewDiagM / 2;
+//   var viewLoI = camCtrIj[0] - viewDiagM / 2;
+//   var viewHiI = camCtrIj[0] + viewDiagM / 2;
+//   var viewLoJ = camCtrIj[1] - viewDiagM / 2;
+//   var viewHiJ = camCtrIj[1] + viewDiagM / 2;
 
-  var viewLoIjSum = viewLoI + viewLoJ;
-  var viewHiIjSum = viewHiI + viewHiJ;
-  var viewLoIjDiff = viewLoI - viewLoJ;
-  var viewHiIjDiff = viewHiI - viewHiJ;
+//   var viewLoIjSum = viewLoI + viewLoJ;
+//   var viewHiIjSum = viewHiI + viewHiJ;
+//   var viewLoIjDiff = viewLoI - viewLoJ;
+//   var viewHiIjDiff = viewHiI - viewHiJ;
 
-  var i, j = getCenter(thing);
-  var ijSum = i + j;
-  var ijDiff = i - j;
-  if (viewLoIjSum <= ijSum && ijSum <= viewHiIjSum) {
-      return true;
-  }
-
-  // note how are currently placed:
-  // sprite CENTER corresponds to canvas-horizontal center position
-  // sprite BOTTOM corresponds to canvas-vertical center position
-
-
-
-  return getCenter
-}
-
-function calcOpviewParams(camCtrIj) {
-  // the opview is always centered on the camera,
-  // which for now is always a navi.
-  return {
-    loCornIj: [camCtrIj[0] - viewDiagM, camCtrIj[1]],
-    hiCornIj: [camCtrIj[1] + viewDiagM, camCtrIj[1]]
-  }
-}
+//   var i, j = getCenter(thing);
+//   var ijSum = i + j;
+//   var ijDiff = i - j;
+//   return viewLoIjSum <= ijSum && ijSum <= viewHiIjSum
+//     && viewLoIjDiff <= ijDiff && ijDiff <= viewHiIjDiff;
+// }
 
 // in-dev method -- not yet called
 // function naviLook(navi) {
@@ -327,7 +318,7 @@ function makeTile(i, j, isAir = false) {
   tileDiv.style.left = anchorLeft + 14 * (i - j);
   tileDiv.style.top = anchorTop + 7 * (i + j);
   tileDiv.style.zIndex = i + j;
-  birdseyeEl.appendChild(tileDiv);
+  tileLayer.appendChild(tileDiv);
   var tile = {
     type: "tyle",
     i: i,
@@ -339,6 +330,16 @@ function makeTile(i, j, isAir = false) {
   };
   world.tileAt[i] ||= [];
   world.tileAt[i][j] = tile;
+
+  if (i < world.tileMins[0]) world.tileMins[0] = i;
+  if (i > world.tileMaxs[0]) world.tileMaxs[0] = i;
+  if (j < world.tileMins[1]) world.tileMins[0] = j;
+  if (j > world.tileMaxs[1]) world.tileMaxs[0] = j;
+  if (!world.northTile || (i + j) < (world.northTile.i + world.northTile.j))
+    world.northTile = tile;
+  if (!world.westTile || (i - j) < (world.westTile.i - world.westTile.j))
+    world.westTile = tile;
+  
   world.tiles.push(tile);
 }
 for (var j = 0; j < nj; j++) {
@@ -351,10 +352,12 @@ world.tiles.filter(tile => tile.i % 3 === 1 && tile.j % 3 === 1)
   .forEach(tile => makeCrystalOnTile(tile));
 
 function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
+  if (!startTile) fullStop("invalid startTile to makeNavi");
   var naviDiv = document.createElement('div');
   naviDiv.id = name;
   naviDiv.className = `navi ${name}`;
-  startTile.div.appendChild(naviDiv);
+  spriteLayer.appendChild(naviDiv);
+  // TODO: correct positioning since navi div no longer child of tile div in DOM
   var navi = {
     name: name,
     type: "navi",
@@ -422,7 +425,8 @@ function makeCrystalOnTile(tile) {
   crysDiv.id = `crystal_${id}`;
   var isSmall = false;
   crysDiv.className = isSmall ? "crystal small" : "crystal";
-  tile.div.appendChild(crysDiv);
+  // TODO: correct positioning since crystal is no longer child of tile in DOM
+  spriteLayer.appendChild(crysDiv);
   var crystal = {
     id: id,
     type: "crystal",
@@ -438,14 +442,14 @@ function makeCrystalOnTile(tile) {
 }
 
 function moveNaviToTile(navi, newTile) {
-  newTile.div.appendChild(navi.div);
-  navi.onTile.contents = navi.onTile.contents.filter(x => x !== navi);
+  navi.onTile.contents = without(navi.onTile.contents, navi);
   navi.onTile = newTile;
   navi.onTile.contents.push(navi);
   return true;
 }
 
 function moveNavi(navi, across, down) {
+  // this method calls moveNaviToTile
   if (navi.speed <= 0) fullStop(`moveNavi speed = ${navi.speed}`);
   if (navi.speed > 1) fullStop("navi speed > 1 tile/tick")
   if (!isRat(navi.across) || !isRat(navi.down))
@@ -486,7 +490,9 @@ function moveNavi(navi, across, down) {
   shift = [isCenterSameIj[0] ? 0 : signs[0], isCenterSameIj[1] ? 0 : signs[1]];
   destTile = getTileAtShift(navi.onTile, shift);
   if (!destTile) throw ("navi center movecheck got invalid tile");
+
   moveNaviToTile(navi, destTile);
+
   var overlaps = getThingsNaviOverlaps(navi);
   // for now the only other things are crystals, so handle as such
   overlaps.forEach(thing => {
@@ -500,13 +506,29 @@ function moveNavi(navi, across, down) {
   [navi.across, navi.down] = [newAcross, newDown].map(x => {
     return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
   });
-  var halfWidth = navi.pose.size[0] / 2;
-  navi.div.style.left =
-    `${Math.round(14 + 14 * (navi.across - navi.down)) - halfWidth}px`;
-  navi.div.style.bottom =
-    `${Math.round(14 - (7 * (navi.across + navi.down)))}px`;
-  navi.div.style.zIndex = Math.round(50 * (navi.across + navi.down));
+
+  updateThingSpritePos(navi);
+
   return true;
+}
+
+function updateThingSpritePos(thing) {
+  if (!world.northTile) fullStop("updateThingSpritePos called before grid setup");
+  if (!thing || !thing.div) fullStop("invalid thing to updateThingSpritePos");
+
+  if (!(thing.type === "navi")) fullStop("updateThingSpritePos currently only navis");
+  var halfWidth = thing.pose.size[0] / 2; // TODO: read this from div style
+  var ctr = getCenter(thing);
+
+  // works when northTile = 0, 0 and westTileI = 0
+  // TODO: check for other cases!!
+  var offX = 14 * (world.westTile.j - world.westTile.i + 1);
+
+  var offY = 160; // offY for the bottom edge, since we align sprites using bottom
+
+  thing.div.style.left = `${Math.round(offX + 14 * (ctr[0] - ctr[1])) - halfWidth}px`;
+  thing.div.style.bottom =`${Math.round(offY - (7 * (ctr[0] + ctr[1])))}px`;
+  thing.div.style.zIndex = Math.round(50 * (ctr[0] + ctr[1]));
 }
 
 function naviWalk(navi) {
@@ -640,7 +662,7 @@ function tickLoop() {
   world.tick++;
   if (world.tick % 6 === 0) {
     var newRF = (world.resonanceFrame + 1) % 8;
-    birdseyeEl.classList.replace(`resonance-${world.resonanceFrame}`,
+    spriteLayer.classList.replace(`resonance-${world.resonanceFrame}`,
       `resonance-${newRF}`);
     world.resonanceFrame = newRF;
   }
