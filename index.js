@@ -515,18 +515,28 @@ function moveNavi(navi, across, down) {
 }
 
 function updateThingSpritePos(thing) {
-  if (!world.northTile) fullStop("updateThingSpritePos called before grid setup");
+  // TODO: this method is only tested for northTile == [0, 0]
+  // test for other scenarios also!
+
+  if (!world.westTile) fullStop("updateThingSpritePos called before grid setup");
   if (!thing || !thing.div) fullStop("invalid thing to updateThingSpritePos");
 
-  var halfWidth = parseInt(thing.div.style.width) / 2; // TODO: read this from div style
+  const camNavi = world.cameraNavi;
+  const camCtr = camNavi ? getCenter(camNavi) : canvSize.map(x => x/2);
+
   var ctr = getCenter(thing);
+  var halfWidth = parseInt(thing.div.style.width) / 2;
 
-  var offX = 14 * (world.westTile.j + 1);
-  var offY = 160; // offY for the bottom edge
-
-  thing.div.style.left = `${Math.round(offX + 14 * (ctr[0] - ctr[1])) - halfWidth}px`;
-  thing.div.style.bottom =`${Math.round(offY - (7 * (ctr[0] + ctr[1])))}px`;
-  thing.div.style.zIndex = Math.round(50 * (ctr[0] + ctr[1]));
+  // todo: move this logic outside this method so it occurs once per camera moved,
+  // not per sprite updated
+  var offX = canvSize[0] / 2;
+  var offBtm = canvSize[1] / 2;
+  offX += (camCtr[1] - camCtr[0]) * 14;
+  offBtm += (camCtr[0] + camCtr[1]) * 7;
+  worldLayer.style.transform = `translate(${offX}px, ${offBtm}px)`;
+  thing.div.style.left = `${Math.round(14 * (ctr[0] - ctr[1])) - halfWidth}px`;
+  thing.div.style.bottom =`${Math.round(7 * (ctr[0] + ctr[1]))}px`;
+  thing.div.style.zIndex = Math.round(50 * (ctr[0] + ctr[1])); // x50 is arbitrary
 }
 
 function naviWalk(navi) {
