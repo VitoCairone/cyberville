@@ -5,9 +5,14 @@ const ticksPerHour = 60 * 60 * 60;
 const refNaviMassKg = 75;
 const canvSize = [240, 160];
 function mphToTpt(mph) { return mph * tilesPerMile / ticksPerHour; }
-function tptToMph(tpt) { return tpt / mphToTpt(1); }
+function tptToMph(tpt) { return tpt * ticksPerHour / tilesPerMile; }
 const refWalkSpeed = mphToTpt(3);
 const refRunSpeed = mphToTpt(8);
+function metersToPx(x) { return x * 28 / root2; }
+function pxToMeters(x) { return x * root2 / 28; }
+function isRat(x) { return x >= 0 && x < 1 };
+function prodSqrs(a, b) { return a * a + b * b; }
+const viewDiagM = pxToMeters(Math.sqrt(prodSqrs(...canvSize)));
 
 // TODOS
 // * replace .color with bools .isBlue (tile) and .isTeamB (navi) --DONE
@@ -85,6 +90,46 @@ function naviIdFor(x) {
   // by the navi itself, e.g. in encounter order,
   // pragmatically that can be delayed until it matters
   return x.id || x.name || x.div.id || null;
+}
+
+function isThingInView(thing, camCtrIj) {
+  if (!thing || !thing.div) fullStop("invalid thing to isThingInView");
+  // const spriteSize = [thing.div.style.width, thing.div.style.height];
+  
+  // is thing center in view
+  var viewLoI = camCtrIj[0] - viewDiagM / 2;
+  var viewHiI = camCtrIj[0] + viewDiagM / 2;
+  var viewLoJ = camCtrIj[1] - viewDiagM / 2;
+  var viewHiJ = camCtrIj[1] + viewDiagM / 2;
+
+  var viewLoIjSum = viewLoI + viewLoJ;
+  var viewHiIjSum = viewHiI + viewHiJ;
+  var viewLoIjDiff = viewLoI - viewLoJ;
+  var viewHiIjDiff = viewHiI - viewHiJ;
+
+  var i, j = getCenter(thing);
+  var ijSum = i + j;
+  var ijDiff = i - j;
+  if (viewLoIjSum <= ijSum && ijSum <= viewHiIjSum) {
+      return true;
+  }
+
+  // note how are currently placed:
+  // sprite CENTER corresponds to canvas-horizontal center position
+  // sprite BOTTOM corresponds to canvas-vertical center position
+
+
+
+  return getCenter
+}
+
+function calcOpviewParams(camCtrIj) {
+  // the opview is always centered on the camera,
+  // which for now is always a navi.
+  return {
+    loCornIj: [camCtrIj[0] - viewDiagM, camCtrIj[1]],
+    hiCornIj: [camCtrIj[1] + viewDiagM, camCtrIj[1]]
+  }
 }
 
 // in-dev method -- not yet called
@@ -166,7 +211,7 @@ function applyTickToNavi(navi) {
 function doCirclesOverlap(aCtr, bCtr, aRad, bRad) {
   var [dx, dy] = [aCtr[0] - bCtr[0], aCtr[1] - bCtr[1]];
   var radSum = aRad + bRad;
-  return dx * dx + dy * dy < radSum * radSum;
+  return prodSqrs(dx, dy) < radSum * radSum;
 }
 
 function doThingsOverlap(a, b) {  
@@ -263,8 +308,6 @@ function ijToCanvasXy(ij, camCtrIj) {
   var i, j = diffIj;
   return [canvCtrXy[0] + 14 * (i - j), canvCtrXy[1] + 7 * (i + j)];
 }
-
-function isRat(x) { return x >= 0 && x < 1 };
 
 function isTileNeutralPat(tile) {
   // var nSur = getSurroundTiles(tile).length;
@@ -675,9 +718,9 @@ function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
   const Rab = [circleB[0] - circleA[0], circleB[1] - circleA[1]];
   
   const radiusSum = aRad + bRad;
-  const A = Vab[0] * Vab[0] + Vab[1] * Vab[1];
+  const A = prodSqrs(Vab[0], Vab[1]);
   const B = 2 * (Rab[0] * Vab[0] + Rab[1] * Vab[1]);
-  const C = Rab[0] * Rab[0] + Rab[1] * Rab[1] - radiusSum * radiusSum;
+  const C = prodSqrs(Rab[0], Rab[1]) - radiusSum * radiusSum;
   var soln = solveQuadratic(A, B, C);
   if (!soln) return Infinity;
   var [t1, t2] = soln;
