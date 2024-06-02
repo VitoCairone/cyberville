@@ -61,12 +61,38 @@ const zoneMap = [ // note these values get read right-to-left
   0b111111111111111111111111111,
   0b111111111111111111111111111
 ];
+
+const bnroLevel1Map = `Level Map
+   XXX  X X X X X X
+   XXXXXXXXXXXXXXXXX
+   XXX X X X X X X X
+                   X
+XXX  XXX XXXXXXXXXXXXXX
+  X   X  X         X  X
+  X   XX XXXX XXX  X XXX
+  X   X  X      X  X  X
+  X   XX X  0X1 X  X XXX 
+  X   X  X  XXX X  X  X
+  X   XX X  XXX X  X XXX
+  XXXXX  X   X  X  X  X
+      XX X   X  X  X XXX
+      X  X   x  X  X  X
+      X XXX  X  X XXX
+      XXXXX  XXXXXXXX
+        XXX       XXX
+         X  X X X  X
+        XXXXXXXXXX X
+          X X X X  X
+                  XXX
+                  XXX
+                  XXX`
+
 const ni = Math.max(...zoneMap.map(x => Math.floor(Math.log2(x)))) + 1;
 const nj = zoneMap.length;
 var pickupSound = new Audio('./sounds/pickup.mp3');
 var isFullStop = false;
-var anchorTop = 0;
-var anchorLeft = (nj - 1) * 14;
+// var anchorTop = 0;
+// var anchorLeft = (nj - 1) * 14;
 const worldLayer = document.getElementById('world-layer');
 const spriteLayer = document.getElementById('sprite-layer');
 const tileLayer = document.getElementById('tile-layer');
@@ -294,13 +320,6 @@ function handleCollisions() {
   });
 }
 
-function ijToCanvasXy(ij, camCtrIj) {
-  var canvCtrXy = canvSize.map(x => x / 2);
-  var diffIj = [ij[0] - camCtrIj[0], ij[1] - camCtrIj[0]];
-  var i, j = diffIj;
-  return [canvCtrXy[0] + 14 * (i - j), canvCtrXy[1] + 7 * (i + j)];
-}
-
 function isTileNeutralPat(tile) {
   // var nSur = getSurroundTiles(tile).length;
   var nSur = 0;
@@ -316,9 +335,9 @@ function makeTile(i, j, isAir = false) {
   var tileDiv = document.createElement('div');
   tileDiv.id = `tile-${i}-${j}`;
   tileDiv.className = `path-tile ${isBlue ? 'blue' : 'red'}`;
-  tileDiv.style.left = anchorLeft + 14 * (i - j);
-  tileDiv.style.top = anchorTop + 7 * (i + j);
-  tileDiv.style.zIndex = i + j;
+  tileDiv.style.left = 14 * (i - j - 1);
+  tileDiv.style.top = 7 * (i + j);
+  tileDiv.style.zIndex = -10000;
   tileLayer.appendChild(tileDiv);
   var tile = {
     type: "tyle",
@@ -394,8 +413,10 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
-var startTileP = getTileAtIj(1, 4);
-var startTileR = getTileAtIj(4, 1);
+
+
+var startTileP = getTileAtIj(0, 1);
+var startTileR = getTileAtIj(1, 0);
 var proto = makeNavi("proto", {
   "stand": { nFrames: 1, size: [28, 37] },
   "walk": {
@@ -405,7 +426,8 @@ var proto = makeNavi("proto", {
     ]
   }
 }, 15, startTileP, false);
-proto.decide.pat = ["F3", "R2", "F1", "L2", "F3", "L2", "F2", "R2", "F3", "R2", "F1", "L2"];
+// proto.decide.pat = ["F3", "R2", "F1", "L2", "F3", "L2", "F2", "R2", "F3", "R2", "F1", "L2"];
+proto.decide.pat = "F100";
 setFacingDir(proto, 5);
 
 var rock = makeNavi("rock", {
@@ -417,7 +439,8 @@ var rock = makeNavi("rock", {
     ]
   }
 }, 15, startTileR, true);
-rock.decide.pat = ["F21", "R2", "F24", "R2", "F12", "R2", "F12", "L2", "F12", "L2"];
+// rock.decide.pat = ["F21", "R2", "F24", "R2", "F12", "R2", "F12", "L2", "F12", "L2"];
+rock.decide.pat = ["F5", "R1"];
 setFacingDir(rock, 3);
 
 function makeCrystalOnTile(tile) {
@@ -514,29 +537,38 @@ function moveNavi(navi, across, down) {
   return true;
 }
 
-function updateThingSpritePos(thing) {
-  // TODO: this method is only tested for northTile == [0, 0]
-  // test for other scenarios also!
-
-  if (!world.westTile) fullStop("updateThingSpritePos called before grid setup");
-  if (!thing || !thing.div) fullStop("invalid thing to updateThingSpritePos");
-
+function updateCamera() {
   const camNavi = world.cameraNavi;
   const camCtr = camNavi ? getCenter(camNavi) : canvSize.map(x => x/2);
+  if (camNavi.type !== "navi") fullStop("camera should be navi");
+// these are offsets due to movement of the camera.
+  // the anchor offset of the background when movement = 0,0
+  // and navi begins at 0,0 should place navi's center-bottom at
+  // [viewWidth / 2 - spriteWidth / 2, viewHeight / 2]
+  //
+  // This supposes the navi is located at [-spriteWidth / 2, 0]
+  // in the untranslated spriteLayer
+
+  var offX = canvSize[0] / 2 + (camCtr[1] - camCtr[0]) * 14;
+  var offY = canvSize[1] / 2 + (camCtr[0] + camCtr[1]) * -7;
+  worldLayer.style.transform = `translate(${offX}px, ${offY}px)`;
+}
+
+function updateThingSpritePos(thing) {
+  updateCamera();
 
   var ctr = getCenter(thing);
   var halfWidth = parseInt(thing.div.style.width) / 2;
+  // if (!world.westTile) fullStop("updateThingSpritePos called before grid setup");
+  if (!thing || !thing.div) fullStop("invalid thing to updateThingSpritePos");
 
-  // todo: move this logic outside this method so it occurs once per camera moved,
-  // not per sprite updated
-  var offX = canvSize[0] / 2;
-  var offBtm = canvSize[1] / 2;
-  offX += (camCtr[1] - camCtr[0]) * 14;
-  offBtm += (camCtr[0] + camCtr[1]) * 7;
-  worldLayer.style.transform = `translate(${offX}px, ${offBtm}px)`;
-  thing.div.style.left = `${Math.round(14 * (ctr[0] - ctr[1])) - halfWidth}px`;
-  thing.div.style.bottom =`${Math.round(7 * (ctr[0] + ctr[1]))}px`;
-  thing.div.style.zIndex = Math.round(50 * (ctr[0] + ctr[1])); // x50 is arbitrary
+  var left = Math.round(14 * (ctr[0] - ctr[1]) - halfWidth);
+  var top = 7 * (ctr[0] + ctr[1]); // - thing.div.style.height;
+
+  thing.div.style.left = `${left}px`;
+  thing.div.style.top =`${top - 28}px`;
+  thing.div.style.zIndex = 100000000000;
+  // console.log(thing.div.style);
 }
 
 function naviWalk(navi) {
@@ -662,6 +694,15 @@ function tickLoop() {
     clearInterval(tickIntervalId);
     return;
   }
+
+  // if (world.tick > 2) {
+  //   fullStop("debug stop");
+  //   return;
+  // }
+
+  console.log(`Tick ${world.tick}}`);
+  console.log(getCenter(proto));
+
   handleCollisions();
   world.navis.forEach(navi => {
     applyTickToNavi(navi);
