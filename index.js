@@ -518,8 +518,7 @@ function updateThingSpritePos(thing) {
   if (!world.northTile) fullStop("updateThingSpritePos called before grid setup");
   if (!thing || !thing.div) fullStop("invalid thing to updateThingSpritePos");
 
-  if (!(thing.type === "navi")) fullStop("updateThingSpritePos currently only navis");
-  var halfWidth = thing.pose.size[0] / 2; // TODO: read this from div style
+  var halfWidth = parseInt(thing.div.style.width) / 2; // TODO: read this from div style
   var ctr = getCenter(thing);
 
   var offX = 14 * (world.westTile.j + 1);
