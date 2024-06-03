@@ -11,7 +11,9 @@ function tptToMph(tpt) { return tpt * ticksPerHour / tilesPerMile; }
 const refWalkSpeed = mphToTpt(3.1);
 const refRunSpeed = mphToTpt(7.25);
 
+var isBgMusicOn = false;
 var isFullStop = false;
+var isMuted = true;
 
 function metersToPx(m) { return m * 28 / root2; }
 function pxToMeters(px) { return px * root2 / 28; }
@@ -50,7 +52,10 @@ const zoneMap = `Tile Map
   000000000000000000111000
   000000000000000000111000`;
 
-const pickupSound = new Audio('./sounds/pickup.mp3');
+// const pickupSound = new Audio('./sounds/pickup.mp3');
+const pickupSoundEl = document.getElementById('pickup-audio');
+const big1SoundEl = document.getElementById('bg-1-audio');
+
 const cameraLayer = document.getElementById('camera-layer');
 cameraLayer.style.width = canvSize[0];
 cameraLayer.style.height = canvSize[1];
@@ -68,9 +73,7 @@ var world = {
   tiles: [],
   navis: [],
   crystals: [],
-  shots: [],
   nextCrystalId: 0,
-  nextShotId: 0,
   tick: 0,
   resonanceFrame: 0,
   northTile: null,
@@ -78,6 +81,12 @@ var world = {
   tileMins: [Infinity, Infinity],
   tileMaxs: [-Infinity, -Infinity],
   cameraNavi: null
+}
+
+
+
+function enableSound() {
+
 }
 
 function applyTickToNavi(navi) {
@@ -316,7 +325,7 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
     }
   };
   startTile.contents.push(navi);
-  naviWalk(navi);
+  naviRun(navi);
   world.navis.push(navi);
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
@@ -324,7 +333,7 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
 
 
 var startTileP = world.tiles[0];
-var startTileR = world.tiles[world.tiles.length - 1];
+var startTileR = world.tiles[1];
 var proto = makeNavi("proto", {
   "stand": { nFrames: 1, size: [28, 37] },
   "walk": {
@@ -461,6 +470,11 @@ function updateThingSpritePos(thing) {
 
 function naviWalk(navi) {
   setPose(navi, "walk");
+  navi.speed = refWalkSpeed;
+}
+
+function naviRun(navi) {
+  setPose(navi, "walk");
   navi.speed = refRunSpeed;
 }
 
@@ -469,13 +483,39 @@ function naviStand(navi) {
   navi.speed = 0;
 }
 
+function playPickupSound(navi) {
+  if (isMuted) return;
+
+  var loudness = 1.0;
+  if (navi !== world.cameraNavi) {
+    var maxLoudL2 = 10 * 10;
+    var ctr = getCenter(navi);
+    var camCtr = getCenter(world.cameraNavi);
+    var [dx, dy] = [ctr[0] - camCtr[0], ctr[1] - camCtr[1]];
+    var distL2 = prodSqrs(dx, dy);
+    if (distL2 > maxLoudL2) loudness = maxLoudL2 / distL2;
+    if (loudness < 0.01) loudness = 0;
+  }
+
+  if (loudness > 0) {
+    pickupSoundEl.volume = loudness;
+    pickupSoundEl.load();
+    pickupSoundEl.play().catch((err) => { console.log(err); });
+  }
+}
+
+function playBackgroundMusic() {
+  if (isMuted) return;
+  big1SoundEl.play();
+  isBgMusicOn = true;
+}
+
 function pickupCrystal(navi, crystal) {
-  pickupSound.load();
-  pickupSound.play().catch(x => { return null; });
   var tile = crystal.onTile;
   removeThing(crystal);
   setTileColor(tile, navi.isTeamB);
   getSurroundTiles(tile).forEach(sTile => setTileColor(sTile, navi.isTeamB));
+  playPickupSound(navi);
 }
 
 function removeThing(thing) {
@@ -488,9 +528,6 @@ function removeThing(thing) {
   switch (thing.type) {
     case 'navi':
       world.navis = without(world.navis, thing);
-      break;
-    case 'shot':
-      world.shots = without(world.shots, thing);
       break;
     case 'crystal':
       world.crystals = without(world.crystals, thing);
@@ -656,7 +693,7 @@ function updateNaviDecides(navi) {
   if (decide.code === "L" || decide.code === "R") fullStop("L/R follows L/R in navi decides");
   switch (navi.decide.code) {
     case "F":
-      naviWalk(navi);
+      naviRun(navi);
       decide.until = world.tick + decide.val / refRunSpeed;
       break;
     case "S":

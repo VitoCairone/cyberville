@@ -77,6 +77,15 @@
     </head>
     
     <body>    
+        <div id="audio-box">
+            <!-- all audio files go here because they can certainly be controlled,
+                e.g. mute/unmute/pause/play, as elements.
+                TODO: check if these can in fact be moved to JavaScript
+                and still do all the needed things -->
+            <audio id="pickup-audio" src="./sounds/pickup.mp3"></audio>
+            <audio id="bg-1-audio" src="./sounds/MMBN_OCRemix_Lets_Bust_Some_Viruses.mp3"></audio>
+        </div>
+
         </div>
         <div id="camera-layer"> <!-- overflow: hidden blocks content out of view -->
             <div id="sound-toggle"></div>
