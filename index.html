@@ -1,17 +1,36 @@
 <HTML>
     <head>
     <style>
-        #birdseye {
-            left: 4px;
-            top: 40px;
-            /* width: 80%;
-            height: 80%;
-            border: 2px solid black; */
+        #camera-layer {
+            position: absolute;
+            /* height and width set in JS using var canvSize */
+            top: 0px;
+            left: 0px;
+            border: 1px solid blue;
+            overflow: hidden;
+        }
+        #world-layer {
+            top: 0px;
+            left: 0px;
+            height: 0px;
+            position: absolute;
+        }
+        #sprite-layer {
+            top: 0px;
+            left: 0px;
+            position: absolute;
+        }
+        #tile-layer {
+            top: 0px;
+            left: 0px;
+            position: absolute;
+            width: 100%;
+            height: 100%;
         }
         .path-tile {
             position: absolute;
             width: 28px;
-            height: 14px; /* height: 17px; */
+            height: 14px;
             background-image: url("./sprites/path_tile.gif");
         }
         .path-tile.blue {
@@ -23,7 +42,6 @@
             left: 0px; /* 14 - width/2 */
             bottom: 16px;
             background-image: url("./sprites/proto_stand.gif");
-            z-index: 100;
             position: absolute;
         }
         .navi.Rock {
@@ -32,20 +50,14 @@
             left: 5px; /* 14 - width/2 */
             bottom: 16px;
             background-image: url("./sprites/rock_stand.gif");
-            z-index: 100;
             position: absolute;
         }
         .crystal {
-            width: 24px;
-            height: 61px;
+            height: 56px;
             background-image: url("./sprites/green_crystal.gif");
-            left: 2px; /* 14 - width/2 */
-            bottom: 4px;
             position: absolute;
-            z-index: 50;
         }
         .resonance-0 .crystal { background-position-x: 0px; }
-
         .resonance-1 .crystal { background-position-x: 24px; }
         .resonance-2 .crystal { background-position-x: 48px; }
         .resonance-3 .crystal { background-position-x: 72px; }
@@ -64,9 +76,14 @@
     </style>
     </head>
     
-    <body>
-        <div id="birdseye" class="resonance-0" style="position: absolute;">
-            <div id="sprite-layer" class="layer" style="position: absolute; width: 100%; height: 100%;">
+    <body>    
+        </div>
+        <div id="camera-layer"> <!-- overflow: hidden blocks content out of view -->
+            <div id="sound-toggle"></div>
+            <div id="world-layer"> <!-- THIS layer scrolls with camera's in-world movement -->
+                <!-- layers within world-layer don't need to scroll with camera -->
+                <div id="tile-layer" class=""></div>
+                <div id="sprite-layer" class="resonance-0"></div>
             </div>
         </div>
     </body>
