@@ -3,12 +3,17 @@
     <style>
         #camera-layer {
             position: absolute;
+            /* height and width set in JS using var canvSize */
             top: 0px;
             left: 0px;
-            width: 240px;
-            height: 160px;
             border: 1px solid blue;
-            /* overflow: hidden; */
+            overflow: hidden;
+        }
+        #world-layer {
+            top: 0px;
+            left: 0px;
+            height: 0px;
+            position: absolute;
         }
         #sprite-layer {
             top: 0px;
@@ -37,7 +42,6 @@
             left: 0px; /* 14 - width/2 */
             bottom: 16px;
             background-image: url("./sprites/proto_stand.gif");
-            z-index: 100;
             position: absolute;
         }
         .navi.Rock {
@@ -46,17 +50,12 @@
             left: 5px; /* 14 - width/2 */
             bottom: 16px;
             background-image: url("./sprites/rock_stand.gif");
-            z-index: 100;
             position: absolute;
         }
         .crystal {
-            width: 24px;
-            height: 61px;
+            height: 56px;
             background-image: url("./sprites/green_crystal.gif");
-            left: 2px; /* 14 - width/2 */
-            bottom: 4px;
             position: absolute;
-            z-index: 50;
         }
         .resonance-0 .crystal { background-position-x: 0px; }
         .resonance-1 .crystal { background-position-x: 24px; }
@@ -80,6 +79,7 @@
     <body>    
         </div>
         <div id="camera-layer"> <!-- overflow: hidden blocks content out of view -->
+            <div id="sound-toggle"></div>
             <div id="world-layer"> <!-- THIS layer scrolls with camera's in-world movement -->
                 <!-- layers within world-layer don't need to scroll with camera -->
                 <div id="tile-layer" class=""></div>
