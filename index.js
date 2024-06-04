@@ -76,14 +76,10 @@ var world = {
   nextCrystalId: 0,
   tick: 0,
   resonanceFrame: 0,
-  northTile: null,
-  westTile: null,
   tileMins: [Infinity, Infinity],
   tileMaxs: [-Infinity, -Infinity],
   cameraNavi: null
 }
-
-
 
 function enableSound() {
 
@@ -174,7 +170,6 @@ function getThingsNaviOverlaps(navi) {
   // );
 
   var things = navi.onTile.contents;
-
   return things.filter(x => x !== navi && doThingsOverlap(navi, x));
 }
 
@@ -257,16 +252,11 @@ function makeTile(i, j, isAir = false) {
 
   if (i < world.tileMins[0]) world.tileMins[0] = i;
   if (i > world.tileMaxs[0]) world.tileMaxs[0] = i;
-  if (j < world.tileMins[1]) world.tileMins[0] = j;
-  if (j > world.tileMaxs[1]) world.tileMaxs[0] = j;
-  if (!world.northTile || (i + j) < (world.northTile.i + world.northTile.j))
-    world.northTile = tile;
-  if (!world.westTile || (i - j) < (world.westTile.i - world.westTile.j))
-    world.westTile = tile;
+  if (j < world.tileMins[1]) world.tileMins[1] = j;
+  if (j > world.tileMaxs[1]) world.tileMaxs[1] = j;
   
   world.tiles.push(tile);
 }
-
 
 function makeGridFromMap(isOneToNine = true) {
   const lines = zoneMap.split(/\r?\n/);
@@ -435,7 +425,7 @@ function moveNavi(navi, across, down) {
   // for now the only cases detected by overlap are crystals, so handle as such
   overlaps.forEach(thing => {
     if (thing.type === "crystal") return pickupCrystal(navi, thing);
-    console.log(`tk= ${world.tick} navis overlap: ${navi.name} and ${thing.name}`);
+    console.log(`tick=${world.tick} navis overlap: ${navi.name} and ${thing.name}`);
   });
   [navi.across, navi.down] = [newAcross, newDown].map(x => {
     return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
@@ -488,7 +478,7 @@ function playPickupSound(navi) {
 
   var loudness = 1.0;
   if (navi !== world.cameraNavi) {
-    var maxLoudL2 = 10 * 10;
+    var maxLoudL2 = 12 * 12; // inscribed circle for 720 x 480 window
     var ctr = getCenter(navi);
     var camCtr = getCenter(world.cameraNavi);
     var [dx, dy] = [ctr[0] - camCtr[0], ctr[1] - camCtr[1]];
