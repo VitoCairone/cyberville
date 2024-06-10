@@ -1,9 +1,107 @@
+// get see tiles for facing
+
+// MVP = 6 fwd (including self) and 5 wide
+// = 30 tiles cardinal (6 rows of 5)
+
+// semicardinal = 31 tiles
+// 9 rows alternating 3 and 5 (15 + 16 = 31)
+
+// TODO: save runtime by not constructing these grids
+// every time, instead construct one cardinal grid
+// and one semicardinal and update values only
+
+function look() {
+	var shift = shifts[navi.facingDir];
+	var naviIj = getCenter(navi).map(x => Math.floor(x));
+	var shiftL = shifts[(navi.facingDir + 6) & 7];
+	var shiftR = shifts[(navi.facingDir + 2) & 7];
+
+	var i, j, wid;
+	var edgeIj = naviIj.map((x, idx) => x + shiftL[idx]);
+	var rows = [];
+
+	if (shift[0] && shift[1]) {
+		for (var fwd = 0; fwd < 9; fwd++) {
+			i, j = edgeIj;
+			wid = fwd & 1 ? 5 : 3;
+			rows.push([]);
+			for (var rit = 0; rit < wid; rit++) {
+				rows[fwd].push(seePlaceAs(i, j, fwd, rit));
+				i += shiftR[0], j += shiftR[1];
+			}
+			edgeIj = (fwd & 1) ?
+				[edgeIj[0],  edgeIj[1] + shift[1]]
+				: [edgeIj[0] + shift[0], edgeIj[1]];
+		}
+	} else {
+		wid = 5;
+		for (var fwd = 0; fwd < 6; fwd++) {
+			i, j = edgeIj;
+			rows.push([]);
+			for (var rit = 0; rit < wid; rit++) {
+				rows[fwd].push(seePlaceAs(i, j, fwd, rit));
+				i += shiftR[0], j += shiftR[1];
+			}
+			edgeIj = edgeIj.map((x, idx) => x + shift[idx]);
+		}
+	}
+}
+
 /* data on decider itself */
 
 // world inputs
 
 // proto observing a clear space ahead 
 
+/*
+    TARGET RULES: these are some basic rules for the most basic world
+	1. run to most near crystal
+	2. run to most near frontier
+    3. run to the center of the nearest opponent-colored 3x3 and stand there for 30 seconds
+    4. run to the nearest opponent-colored tile and stand there for 6 seconds
+    5. run forward for 6 seconds
+*/
+
+/*
+
+    run : expect <to|towards|away from|with|in front of|behind|alongside>
+    run to : plan a path to the specified place and run until reaching it
+        if can't plan a path, default to go toward
+    run toward : run in the direction of the specified place
+        for the specified time, until reaching it, or until no
+        path is available that goes towards the place
+    
+    the: expect a single item
+
+    QUALIFIERS
+
+    most [<metric>] <selector> : returns the single item within the
+        selector group having the highest value of the metric specified or implied
+    least [<metric>] <selector> : returns the single item witinh the
+        selector group having the lowest value of the metric specified or implied
+    <ally|opponent> : returns a selector group filtered on
+        items (navis/tiles) which are of the specified team color
+
+    METRICS
+
+    far         -> path distance to placable things (farthest; near/nearest)
+    distant     -> as-the-crow-flies distance to placable thing (; close/closest)
+    wide        -> radius (widest; thin/thinnest)
+    tall        -> height (tallest; short/shortest)
+    fast        -> speed (fastest; slow/slowest)
+    big         -> height * rad * rad (biggest; small/smallest)
+
+    SELECTORS
+
+    navi     -> navis NOT INCLUDING self
+    navii    -> navis including self
+    region   -> regions (places)
+    tile     -> tiles (places)
+    thing    -> things (excluding places)
+    object   -> things (excluding places & navis)
+    place    -> places
+    crystal  -> crystals
+    
 
 things:
     redTile
@@ -17,18 +115,24 @@ things:
 // therefor, on the edge a navi can see 2 rows of a 3-row over a 3-row gap
 
 var terrainAheadArr = [
-    "?????rBrBrBrBrBrBrBrB",
-    "????_________________",
-    "???__________________",
-    "??___________________",
-    "?rBrBrBrBrBrBrBrBrBrB",
+    "BrBrBrBrBrBrBrBrBrBrB",
+    "_____________________",
+    "_____________________",
+    "_____________________",
+    "BrBrBrBrBrBrBrBrBrBrB",
     "rBrBrBrBrBrBrBrBrBrBr",
     "?rBrBrBrBrBrBrBrBrBrB",
-    "??___________________",
-    "???__________________",
-    "????_________________",
-    "?????rBrBrBrBrBrBrBrB"
+    "_____________________",
+    "_____________________",
+    "_____________________",
+    "BrBrBrBrBrBrBrBrBrBrB"
 ];
+
+function look() {
+    // returns the tile the navi is on plus 20 tiles forward (= 21)
+    // for the current row and 7 rows lateral each way (= 15)
+    // = 315 places in vision
+}
 
 var moversAheadArr = [
     { 

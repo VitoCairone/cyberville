@@ -1,0 +1,87 @@
+flagElements
+	FIELD
+		background 		 		
+		bicolor 		h-split v-split dr-split df-split
+		tricolor		h-split v-split dr-split df-split
+
+		+ some combo of stripes
+
+		diagRise	off split thin standard thick
+		diagFall	off split thin standard thick
+		horizontal 	off split thin standard thick
+		vertical 	off split thin standard thick
+
+	AND/OR
+	centroid 	off small standard big big-overlay
+	AND/OR
+	radial 		off standard overlay around around-overlay
+
+ROCK: thin black diagRise on red; gold
+PROTO: v-split black on white; gold
+ROLL: thick pink diagRise and diagFall on yellow; gold
+NUMBER: dr-split gray and green; blue
+BASS: thin white diagRise on black; gold
+MASON: green horizontal and vertical on black; silver
+FIRE: yellow centroid and orange radial and yellow diagRise on red; silver
+ELECTRIC: yellow diagRise and diagFall and thin yellow vertical on black; silver
+SHADOW: black centroid and thin black diagRise and diagFall on orange; silver
+PLANT: thin gray diagRise and diagFall and vertical and black centroid on black; red
+STAR: black radial and big yellow centroid and thin yellow diagRise and diagFall and vertical and split horizontal on red and blue; purple
+THUNDER: thin yellow diagRise on black; orange
+NAPALM: purple vertical and red centroid and thin tan horizontal on black; tan
+ICE: sky diagRise and diagFall and horizontal and vertical and centroid on blue
+WOOD: tan centroid and brown radial on brown; green
+KNIGHT: thin orange vertical and horizontal checker white over black; silver
+METAL: small black centroid and gray diagRise and diagFall and horizontal and vertical and radial on black; silver
+WATER: tricolor horizontal white and blue and green; red
+WIND: blue centroid and perimeter on sky; blue
+SEARCH: black radial and horizontal and vertical on red; black
+SCRAP: gray radial on black; silver
+
+function getIdInt(idStr) {
+	if (!isId(idStr)) return -1;
+	return Math.abs(parseInt(idStr.slice(idStr[1] === "-" ? 2 : 1)));
+}
+
+function absId(idStr) {
+	return idStr[1] === "-" ? "#" + idStr.slice(2) : idStr;
+}
+
+function["placeOf"] = function(idStr) { 
+	if (!isId(idStr)) return -1;
+	id = "#" + idStr.slice(idStr[1] === "-" ? 2, 1)
+	var id = fnLib[].getIdInt(idStr)
+}
+
+function isPlaced(a) {
+	if (!isId(a)) return false;
+	var A = getThing(a);
+	return A.hasOwnProperty("place") && A.place.values().some(x => x);
+}
+
+
+fnList["dL2"] = function(a, b) {
+	var isPlacedA = isPlaced(a);
+	var isPlacedB = isPlaced(b);
+	var place1, place2;
+	if (isPlacedA || isPlacedB) {
+		if (isPlacedA && isPlacedB) {
+			var pA, pB = [getPlace(a), getPlace(b)];
+			return prodSqrs(pA[0] - pB[0], pA[1] - pB[1]);
+		} else {
+			var x, y = isPlacedA ? getPlace(a) : getPlace(b);
+			var other = isPlacedA ? b : a;
+			var otherNum = asNum(other);
+			if (Math.abs(x) >= Math.abs(y)) {
+				return prodSqrs(x + x < 0 ? -otherNum : otherNum, y);
+			} else {
+				return prodSqrs(x, y + y < 0 ? -otherNum : otherNum);
+			}
+		}
+	}
+	return prodSqrs(asNum(a), asNum(b));
+}
+
+extended cast
+QUICK: thin yellow diagRise and diagFall on purple
+PHARAOH: large purple centroid and thin purple horizontal on black; blue
