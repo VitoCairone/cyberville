@@ -1,3 +1,19 @@
+function isInVision(navi, other) {
+    var [iN, jN] = getCenter(navi);
+    var [iO, jO] = getCenter(other);
+    switch (navi.facingDir) {
+        case 0: return jO <= jN; // North
+        case 1: return (jO - jN) <= (iO - iN); // North-East, above line m = 1 through N
+        case 2: return iO >= iN; // East
+        case 3: return (jO - jN) >= -(iO - iN); // South-East, below line m = -1 through N
+        case 4: return jO >= jN; // South
+        case 5: return (jO - jN) >= (iO - iN); // South-West, below line m = 1 through N
+        case 6: return iO <= iN; // West
+        case 7: return (jO - jN) <= -(iO - iN); // North-West, above line m = -1 through N
+        default: fullStop("invalid navi facingDir");
+    }
+}
+
 //  a file for notes and saved methods that are not used
 
 /*
