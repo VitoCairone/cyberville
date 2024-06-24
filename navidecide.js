@@ -14,6 +14,27 @@ var refVisionRange = 4800; // ~3 miles
         isTile, isRed, isBlue
 */
 
+// =========|=========|=========|=========|=========|=========|=========|=======
+/*
+
+ALGORITHM SELECTION
+
+The goal of this project is that a navi should be able to GENERATE a set of
+Rules which result in a solution control sequence (MVP based on only current
+State) for any particular solution criteria.
+
+In the simplest case of collecting, a control sequence is a solution if it
+results in collecting the highest possible value of items (MVP crystals are the
+only item and all equal) in the given time with no wall bumps. Revisits should
+also incur a training-tiebreak-penalty.
+*/
+
+const collectScoreFn = function() {
+    // +1000000 for every crystal collected
+    // -1000 for every wall bump
+    // -1 for every tile revisited
+}
+
 function makeVisionData(navi) {
     var dir = navi.facingDir;
     const vecF = dirToIjVector[dir];

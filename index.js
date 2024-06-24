@@ -81,10 +81,6 @@ var world = {
   cameraNavi: null
 }
 
-function enableSound() {
-
-}
-
 function applyTickToNavi(navi) {
   // TODO: consider refactoring these HeldTks to LastTp to reduce updates on every tick
   navi.pose.frameHeldTks += 1;
@@ -107,6 +103,7 @@ function applyTickToNavi(navi) {
     if (didMove) {
       didChange = true;
     } else {
+      navi.scoreHist.bonks++;
       setFacingDir(navi, (navi.facingDir + 4) % 8);
     }
   }
@@ -312,6 +309,12 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
       pat: [],
       idx: 0,
       until: -1
+    },
+    scoreHist: {
+      pickups: 0,
+      bonks: 0,
+      revisits: 0,
+      visitedAt: {}
     }
   };
   startTile.contents.push(navi);
@@ -378,6 +381,13 @@ function moveNaviToTile(navi, newTile) {
   navi.onTile.contents = without(navi.onTile.contents, navi);
   navi.onTile = newTile;
   navi.onTile.contents.push(navi);
+
+  const visitedAt = navi.scoreHist.visitedAt;
+  const [i, j] = [navi.onTile.i, navi.onTile.j];
+  if (i in visitedAt && j in visitedAt[i]) navi.scoreHist.revisits++;
+  visitedAt[i] ||= {};
+  visitedAt[i][j] = world.tick;
+
   return true;
 }
 
@@ -503,6 +513,7 @@ function playBackgroundMusic() {
 function pickupCrystal(navi, crystal) {
   var tile = crystal.onTile;
   removeThing(crystal);
+  navi.scoreHist.pickups++;
   setTileColor(tile, navi.isTeamB);
   getSurroundTiles(tile).forEach(sTile => setTileColor(sTile, navi.isTeamB));
   playPickupSound(navi);
