@@ -29,10 +29,8 @@ only item and all equal) in the given time with no wall bumps. Revisits should
 also incur a training-tiebreak-penalty.
 */
 
-const collectScoreFn = function() {
-    // +1000000 for every crystal collected
-    // -1000 for every wall bump
-    // -1 for every tile revisited
+const collectorScoreFn = function(scoreHist) {
+    return scoreHist.pickups * 1000000 - scoreHist.bonks * 1000 - scoreHist.revisits;
 }
 
 function makeVisionData(navi) {
