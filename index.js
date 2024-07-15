@@ -78,7 +78,8 @@ var world = {
   resonanceFrame: 0,
   tileMins: [Infinity, Infinity],
   tileMaxs: [-Infinity, -Infinity],
-  cameraNavi: null
+  cameraNavi: null,
+  isCameraNaviManual: true
 }
 
 function applyTickToNavi(navi) {
@@ -627,7 +628,7 @@ function tickLoop() {
 
   world.navis.forEach(navi => {
     applyTickToNavi(navi);
-    updateNaviDecides(navi);
+    if (navi !== world.cameraNavi || !world.isCameraNaviManual) updateNaviDecides(navi);
   });
 
   world.tick++;
@@ -728,5 +729,54 @@ function whenWillThingsCollideTk(a, b) {
   return whenWillCirclesCollide(getCenter(a), getCenter(b), a.radius, b.radius,
     getVel(a), getVel(b));
 }
+
+const keyboardDown = {
+  ArrowLeft: false,
+  ArrowUp: false,
+  ArrowRight: false,
+  ArrowDown: false,
+};
+
+// Keyboard Control Section
+
+function updateNaviDirectionViaKeyboard(navi) {
+  const up = keyboardDown.ArrowUp;
+  const down = keyboardDown.ArrowDown;
+  const left = keyboardDown.ArrowLeft;
+  const right = keyboardDown.ArrowRight;
+
+  if (up && left) setFacingDir(navi, 7);
+  else if (up && right) setFacingDir(navi, 1);
+  else if (down && left) setFacingDir(navi, 5);
+  else if (down && right) setFacingDir(navi, 3);
+  else if (up) setFacingDir(navi, 0);
+  else if (right) setFacingDir(navi, 2);
+  else if (down) setFacingDir(navi, 4);
+  else if (left) setFacingDir(navi, 6);
+}
+
+function updateNaviSpeedViaKeyboard(navi) {
+  navi.speed = Object.values(keyboardDown).some(value => value) ? refRunSpeed : 0;
+}
+
+document.addEventListener('keydown', (event) => {
+  const manualNavi = world.cameraNavi;
+  if (keyboardDown.hasOwnProperty(event.key)) {
+      keyboardDown[event.key] = true;
+      updateNaviDirectionViaKeyboard(manualNavi);
+      updateNaviSpeedViaKeyboard(manualNavi);
+  }
+});
+
+document.addEventListener('keyup', (event) => {
+  const manualNavi = world.cameraNavi;
+  if (keyboardDown.hasOwnProperty(event.key)) {
+      keyboardDown[event.key] = false;
+      updateNaviDirectionViaKeyboard(manualNavi);
+      updateNaviSpeedViaKeyboard(manualNavi);
+  }
+});
+
+// Create Interval (i.e. Animation Timer)
 
 var tickIntervalId = window.setInterval(tickLoop, 1000 / 60);
