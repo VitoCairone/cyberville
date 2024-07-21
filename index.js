@@ -21,12 +21,6 @@ function isDiag(shift) { return shift[0] && shift[1]; }
 function isRat(x) { return x >= 0 && x < 1; }
 function prodSqrs(a, b) { return a * a + b * b; }
 
-// NEXT TASKS
-// 1: navi decision inputs
-// 2: navi decision rulesets
-// 3: purple crystals yield single-use powers
-// 4: seperate serverlike and client logic
-
 const zoneMap = `Tile Map
   000111001010101010100000
   000111111111111111110000
@@ -68,19 +62,23 @@ const shifts = [
 ]
 const dirToIjVector = shifts.map(sh => isDiag(sh) ? sh.map(s => s / root2) : sh);
 
-var world = {
-  tileAt: {},
-  tiles: [],
-  navis: [],
-  crystals: [],
-  nextCrystalId: 0,
-  tick: 0,
-  resonanceFrame: 0,
-  tileMins: [Infinity, Infinity],
-  tileMaxs: [-Infinity, -Infinity],
-  cameraNavi: null,
-  isCameraNaviManual: true
+function makeWorld() {
+  return {
+    tileAt: {},
+    tiles: [],
+    navis: [],
+    crystals: [],
+    nextCrystalId: 0,
+    tick: 0,
+    resonanceFrame: 0,
+    tileMins: [Infinity, Infinity],
+    tileMaxs: [-Infinity, -Infinity],
+    cameraNavi: null,
+    isCameraNaviManual: true
+  };
 }
+
+var world = makeWorld();
 
 function applyTickToNavi(navi) {
   // TODO: consider refactoring these HeldTks to LastTp to reduce updates on every tick
@@ -275,7 +273,6 @@ function makeGridFromMap(isOneToNine = true) {
   world.tiles.filter(tile => tile.i % 3 === 1 && tile.j % 3 === 1)
     .forEach(tile => makeCrystalOnTile(tile));
 }
-makeGridFromMap();
 
 function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeNavi");
@@ -324,33 +321,6 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
-
-
-var startTileP = world.tiles[0];
-var startTileR = world.tiles[1];
-var proto = makeNavi("proto", {
-  "stand": { nFrames: 1, size: [28, 37] },
-  "walk": {
-    nFrames: 6,
-    sizesDirArr: [
-      [28, 37], [36, 37], [38, 37], [40, 37], [30, 37], [40, 37], [38, 37], [36, 37]
-    ]
-  }
-}, 15, startTileP, false);
-proto.decide.pat = ["F5", "R2", "F3", "L2", "F5", "L2", "F2", "R2"];
-setFacingDir(proto, 3);
-
-var rock = makeNavi("rock", {
-  "stand": { nFrames: 1, size: [19, 32] },
-  "walk": {
-    nFrames: 6,
-    sizesDirArr: [
-      [19, 32], [22, 32], [24, 32], [26, 32], [21, 32], [26, 32], [24, 32], [22, 32]
-    ]
-  }
-}, 15, startTileR, true);
-rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
-setFacingDir(rock, 7);
 
 function makeCrystalOnTile(tile) {
   var id = world.nextCrystalId;
@@ -730,14 +700,47 @@ function whenWillThingsCollideTk(a, b) {
     getVel(a), getVel(b));
 }
 
+// END Functions
+
+// Setup
+
+makeGridFromMap();
+var startTileP = world.tiles[0];
+var startTileR = world.tiles[1];
+var proto = makeNavi("proto", {
+  "stand": { nFrames: 1, size: [28, 37] },
+  "walk": {
+    nFrames: 6,
+    sizesDirArr: [
+      [28, 37], [36, 37], [38, 37], [40, 37], [30, 37], [40, 37], [38, 37], [36, 37]
+    ]
+  }
+}, 15, startTileP, false);
+proto.decide.pat = ["F5", "R2", "F3", "L2", "F5", "L2", "F2", "R2"];
+setFacingDir(proto, 3);
+
+var rock = makeNavi("rock", {
+  "stand": { nFrames: 1, size: [19, 32] },
+  "walk": {
+    nFrames: 6,
+    sizesDirArr: [
+      [19, 32], [22, 32], [24, 32], [26, 32], [21, 32], [26, 32], [24, 32], [22, 32]
+    ]
+  }
+}, 15, startTileR, true);
+rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
+setFacingDir(rock, 7);
+
+// END Setup
+
+// Keyboard Control
+
 const keyboardDown = {
   ArrowLeft: false,
   ArrowUp: false,
   ArrowRight: false,
   ArrowDown: false,
 };
-
-// Keyboard Control Section
 
 function updateNaviDirectionViaKeyboard(navi) {
   const up = keyboardDown.ArrowUp;
@@ -777,6 +780,15 @@ document.addEventListener('keyup', (event) => {
   }
 });
 
+// END Keyboard Control
+
 // Create Interval (i.e. Animation Timer)
 
 var tickIntervalId = window.setInterval(tickLoop, 1000 / 60);
+
+
+// This section runs only when index.js is called by a node script
+// e.g. when running 'node tester.js'
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = { createWorld };
+}
