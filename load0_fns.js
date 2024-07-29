@@ -784,11 +784,16 @@ document.addEventListener('keyup', (event) => {
 
 // Create Interval (i.e. Animation Timer)
 
-var tickIntervalId = window.setInterval(tickLoop, 1000 / 60);
+// var tickIntervalId = window.setInterval(tickLoop, 1000 / 60);
 
+// END Create Interval
 
-// This section runs only when index.js is called by a node script
-// e.g. when running 'node tester.js'
+// Node Only
+
+// This section does NOT run when the script is linked in an HTML document
+// It runs only for testing and helper scripts invoked with node
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports = { createWorld };
 }
+
+// END Node Only
