@@ -1,15 +1,4 @@
-const canvSize = [720, 480];
-const refNaviMassKg = 75;
-const root2 = Math.sqrt(2);
-const twoPi = Math.PI * 2;
-const tilesPerMile = 1609.34; // 1 tile === 1 meter moving NW|SW|SE|NE
-const ticksPerHour = 60 * 60 * 60;
 
-function mphToTpt(mph) { return mph * tilesPerMile / ticksPerHour; }
-function tptToMph(tpt) { return tpt * ticksPerHour / tilesPerMile; }
-
-const refWalkSpeed = mphToTpt(3.1);
-const refRunSpeed = mphToTpt(7.25);
 
 var isBgMusicOn = false;
 var isFullStop = false;
@@ -47,20 +36,6 @@ const zoneMap = `Tile Map
   000000000000000000111000`;
 
 // const pickupSound = new Audio('./sounds/pickup.mp3');
-const pickupSoundEl = document.getElementById('pickup-audio');
-const big1SoundEl = document.getElementById('bg-1-audio');
-
-const cameraLayer = document.getElementById('camera-layer');
-cameraLayer.style.width = canvSize[0];
-cameraLayer.style.height = canvSize[1];
-const worldLayer = document.getElementById('world-layer');
-const spriteLayer = document.getElementById('sprite-layer');
-const tileLayer = document.getElementById('tile-layer');
-const dirNames = ['NN', 'NE', 'EE', 'SE', 'SS', 'SW', 'WW', 'NW'];
-const shifts = [
-  [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]
-]
-const dirToIjVector = shifts.map(sh => isDiag(sh) ? sh.map(s => s / root2) : sh);
 
 function makeWorld() {
   return {
