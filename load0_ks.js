@@ -29,3 +29,5 @@ const shifts = [
 function isDiag(shift) { return shift[0] && shift[1]; }
 
 const dirToIjVector = shifts.map(sh => isDiag(sh) ? sh.map(s => s / root2) : sh);
+// [ [-0.71, -0.71], [0, 1], [0.71, -0.71], ..., [-1, 0] ]
+// each ijVector has a magnitude of 1.0, i.e. covers the same 2D distance

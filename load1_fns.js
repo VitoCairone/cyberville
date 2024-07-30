@@ -6,7 +6,6 @@ var isMuted = true;
 
 function metersToPx(m) { return m * 28 / root2; }
 function pxToMeters(px) { return px * root2 / 28; }
-function isDiag(shift) { return shift[0] && shift[1]; }
 function isRat(x) { return x >= 0 && x < 1; }
 function prodSqrs(a, b) { return a * a + b * b; }
 
@@ -77,8 +76,20 @@ function applyTickToNavi(navi) {
     if (didMove) {
       didChange = true;
     } else {
+      // bonk / bump / wallbonk // wallbump handled here
       navi.scoreHist.bonks++;
-      setFacingDir(navi, (navi.facingDir + 4) % 8);
+      let newDir;
+      switch (navi.facingDir) {
+        case 0: newDir = navi.across <= 0.5 ? 1 : 7; break;
+        case 1: newDir = 3; break;
+        case 2: newDir = up <= 0.5 ? 3 : 1; break;
+        case 3: newDir = 5; break;
+        case 4: newDir = navi.across >= 0.5 ? 5 : 3; break;
+        case 5: newDir = 7; break;
+        case 6: newDir = navi.down >= 0.5 ? 7 : 5; break;
+        case 7: newDir = 1; break;
+      }
+      setFacingDir(navi, newDir);
     }
   }
   if (didChange) updateNaviImage(navi);
@@ -283,6 +294,10 @@ function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
       idx: 0,
       until: -1
     },
+    mem: {
+      tileVisits: [],
+      tilesSeenHash: {}
+    },
     scoreHist: {
       pickups: 0,
       bonks: 0,
@@ -333,6 +348,19 @@ function moveNaviToTile(navi, newTile) {
   if (i in visitedAt && j in visitedAt[i]) navi.scoreHist.revisits++;
   visitedAt[i] ||= {};
   visitedAt[i][j] = world.tick;
+
+  // TODO: exponentiall falloff records of tileVisits here,
+  // keep tilesSeenHash in sync with tileVisits
+
+  if (navi.mem.tilesSeenHash[newTile]) {
+    // revisit handling here
+    // TODO: prefer to trigger revisit handing BEFORE moving onto the tile
+    navi.mem.tilesSeenHash[newTile]++;
+  } else {
+    navi.mem.tilesSeenHash[newTile] = 1;
+  }
+
+  
 
   return true;
 }
