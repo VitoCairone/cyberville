@@ -48,13 +48,14 @@ function makeWorld() {
     navis: [],
     crystals: [],
     towers: [],
+    fountans: [null, null],
     nextCrystalId: 0,
     tick: 0,
     resonanceFrame: 0,
     tileMins: [Infinity, Infinity],
     tileMaxs: [-Infinity, -Infinity],
     cameraNavi: null,
-    isCameraNaviManual: true
+    isCameraNaviManual: true,
   };
 }
 
@@ -289,6 +290,34 @@ function makeTower(startTile, isTeamB) {
   startTile.contents.push(tower);
   world.towers.push(tower);
   return tower;
+}
+
+function makeFountan(startTile, isTeamB) {
+  if (!startTile) fullStop("invalid startTile to makeFountain");
+  if (world.fountans[isTeamB]) fullStop("reduntant call to makefountan");
+  if (startTile.contents.length) fullStop("occupied startTile to makefountan");
+
+  var fountanDiv = document.createElement('div');
+  fountan.id = `fountan-${isTeamB}`;
+  fountanDiv.className = `fountan team-${isTeamB}`;
+  spriteLayer.appendChild(fountanDiv);
+  var fountan = {
+    type: "fountan",
+    div: fountanDiv,
+    radius: 0.495,
+    speed: 0,
+    across: 0.5,
+    down: 0.5,
+    facingDir: isTeamB ? 5 : 1,
+    isTeamB: isTeamB,
+    isPermRooted: true,
+  };
+
+  // TODO: DRY repeated logic in methods for creating Things
+
+  startTile.contents.push(fountan);
+  world.fountans[isTeamB] = fountan;
+  return fountan;
 }
 
 function makeMinion(startTile, isTeamB, name = "minion") {
