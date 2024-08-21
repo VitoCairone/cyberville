@@ -42,13 +42,13 @@ const zoneMapAlt = `Tile Map
 // const pickupSound = new Audio('./sounds/pickup.mp3');
 
 function makeWorld() {
-  return {
+  var world = {
     tileAt: {},
     tiles: [],
     navis: [],
     crystals: [],
     towers: [],
-    fountans: [null, null],
+    fountains: [null, null],
     nextCrystalId: 0,
     tick: 0,
     resonanceFrame: 0,
@@ -57,6 +57,7 @@ function makeWorld() {
     cameraNavi: null,
     isCameraNaviManual: true,
   };
+  return world;
 }
 
 var world = makeWorld();
@@ -100,6 +101,54 @@ function applyTickToNavi(navi) {
     }
   }
   if (didChange) updateNaviImage(navi);
+
+  afterTickForThing(navi);
+}
+
+const WOOD_REGEN_ON_GRASS = 1;
+const FIRE_DOT = 5;
+const FIRE_DOT_DURATION = 20;
+const ICE_SLOW = 2;
+const ELEC_METAL_HASTE = 1;
+const METAL_SHIELD = 1;
+
+function damageOverTime(thing, amountTotal, duration = 1, elem = 'none') {
+  fullStop("NYI damageOverTime");
+}
+
+function regen(thing, amountTotal, duration = 1, elem = 'none') {
+  fullStop("NYI regen");
+}
+
+function travelSlow(thing, amount, duration = 1, elem = 'norm') {
+  fullStop("NYI travelSlow");
+}
+
+function travelHaste(thing, amount, duration = 1, elem = 'norm') {
+  fullStop("NYI travelHaste");
+}
+
+function shieldOverTime(thing, amount, elem = 'norm') {
+  fullStop("NYI shieldOverTime");
+}
+
+
+function afterTickForThing(thing) {
+  switch (thing.onTile.terrain) {
+    case 'grass':
+      if (thing.elem === "wood") regen(thing, WOOD_REGEN_ON_GRASS);
+      break;
+    case 'fire':
+      if (thing.elem !== "fire")
+        damageOverTime(thing, FIRE_DOT, FIRE_DOT_DURATION, 'fire');
+      break;
+    case 'ice':
+      if (thing.elem !== 'aqua') travelSlow(thing, ICE_SLOW, 5, 'aqua');
+    case 'metal':
+      if (thing.elem === 'elec') travelHaste(thing, ELEC_METAL_HASTE, 5, 'elec');
+      if (thing.elem === 'metal' && thing.speed === 0) shieldOverTime(thing, METAL_SHIELD);
+      break;
+  }
 }
 
 function isWeakTo(thing, atkElem) {
@@ -298,18 +347,71 @@ function makeTower(startTile, isTeamB) {
   return tower;
 }
 
-function makeFountan(startTile, isTeamB) {
-  if (!startTile) fullStop("invalid startTile to makeFountain");
-  if (world.fountans[isTeamB]) fullStop("reduntant call to makefountan");
-  if (startTile.contents.length) fullStop("occupied startTile to makefountan");
+const MINION_TRAIN_STOCK = 5;
+const MINION_TRAIN_INTERVAL = 2 * 60;
+const SPAWN_INTERVAL = 30 * 60;
+const START_SPAWN_DELAY = 10 * 60;
 
-  var fountanDiv = document.createElement('div');
-  fountan.id = `fountan-${isTeamB}`;
-  fountanDiv.className = `fountan team-${isTeamB}`;
-  spriteLayer.appendChild(fountanDiv);
-  var fountan = {
-    type: "fountan",
-    div: fountanDiv,
+function spawnMinion(fountain) {
+  fullStop("NYI spawnMinion");
+}
+
+// NOTE the CURRENT USER HERE is train as in a train (noun) of cars
+
+// TODO: consider revising terms so that
+// 'train' means preparing a unit (long timer)
+// and 'deploy' means sending out a unit (short timer)
+
+function getFountainDeployTile(fountain) {
+  fullStop("NYI getFountainDeployTile");
+  return null;
+}
+
+function deployMinion(fountain) {
+  var startTile = getFountainDeployTile(fountain);
+  var minion = makeMinion(startTile, fountain.isTeamB);
+  return minion;
+}
+
+function onTickFountain(fountain) {
+  if (!fountain.isStarted) {
+    fountain.isStarted = true;
+    fountain.ticksUntilSpawn = START_SPAWN_DELAY;
+    fountain.stock = 0;
+  }
+  if (fountain.ticksUntilSpawn <= 0) {
+    if (!fountain.stock) {
+      fountain.stock = MINION_TRAIN_STOCK;
+      fountain.trainTimer = 0;
+    }
+    if (fountain.trainTimer <= 0) {
+      deployMinion(fountain);
+      fountain.stock--;
+      if (fountain.stock) {
+        fountain.trainTimer = MINION_TRAIN_INTERVAL;  
+      } else {
+        fountain.ticksUntilSpawn = SPAWN_INTERVAL;
+      }
+    } else {
+      fountain.trainTimer--;
+    }
+  } else {
+    fountain.ticksUntilSpawn--;
+  }
+}
+
+function makeFountain(startTile, isTeamB) {
+  if (!startTile) fullStop("invalid startTile to makeFountain");
+  if (world.fountains[isTeamB]) fullStop("reduntant call to makefountain");
+  if (startTile.contents.length) fullStop("occupied startTile to makefountain");
+
+  var fountainDiv = document.createElement('div');
+  fountain.id = `fountain-${isTeamB}`;
+  fountainDiv.className = `fountain team-${isTeamB}`;
+  spriteLayer.appendChild(fountainDiv);
+  var fountain = {
+    type: "fountain",
+    div: fountainDiv,
     radius: 0.495,
     speed: 0,
     across: 0.5,
@@ -321,9 +423,9 @@ function makeFountan(startTile, isTeamB) {
 
   // TODO: DRY repeated logic in methods for creating Things
 
-  startTile.contents.push(fountan);
-  world.fountans[isTeamB] = fountan;
-  return fountan;
+  startTile.contents.push(fountain);
+  world.fountains[isTeamB] = fountain;
+  return fountain;
 }
 
 function makeMinion(startTile, isTeamB, name = "minion") {
@@ -704,6 +806,8 @@ function tickLoop() {
   }
 
   if (world.tick <= 1) updateCamera();
+
+  world.fountains.filter(x => x).forEach(fountain => onTickFountain(fountain));
 
   handleCollisions();
 
