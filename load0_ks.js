@@ -25,6 +25,7 @@ const dirNames = ['NN', 'NE', 'EE', 'SE', 'SS', 'SW', 'WW', 'NW'];
 const shifts = [
   [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]
 ]
+const teamDirs = [5, 1];
 
 function isDiag(shift) { return shift[0] && shift[1]; }
 
@@ -33,12 +34,14 @@ const dirToIjVector = shifts.map(sh => isDiag(sh) ? sh.map(s => s / root2) : sh)
 // each ijVector has a magnitude of 1.0, i.e. covers the same 2D distance
 
 const weakMap = {
+  'wood': 'fire',
+  'fire': 'aqua',
+  'aqua': 'elec',
+  'elec': 'wood',
   'norm': 'void',
   'void': 'norm',
   'metal': 'metal',
   'sky': 'sky',
-  'wood': 'fire',
-  'fire': 'aqua',
-  'aqua': 'elec',
-  'elec': 'wood'
 }
+
+const VOID_SPEED_MOD = 1.15;

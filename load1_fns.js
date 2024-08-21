@@ -363,8 +363,16 @@ function spawnMinion(fountain) {
 // and 'deploy' means sending out a unit (short timer)
 
 function getFountainDeployTile(fountain) {
-  fullStop("NYI getFountainDeployTile");
-  return null;
+  var fountainTile = fountain.onTile;
+  if (fountainTile.contents.length === 1) return fountainTile;
+  var teamDir = teamDirs[fountain.isTeamB];
+  var rots = [0, 1, 7, 2, 6, 3, 5, 4];
+  for (var i = 0; i < 8; i++) {
+    var dir = (teamDir + rots[i]) % 8;
+    var tile = getTileAtShift(fountainTile, shifts[dir]);
+    if (tile.contents.length === 0) return tile;
+  }
+  fullStop("No available tile to deploy at fountain");
 }
 
 function deployMinion(fountain) {
