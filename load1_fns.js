@@ -436,6 +436,40 @@ function makeFountain(startTile, isTeamB) {
   return fountain;
 }
 
+const SHOT_SPAWN_SEPARATION = 0.1;
+
+function makeThingOnTile(tile, kind) {
+  if (!tile || !kind) fullStop("falsy inputs to makeThingOnTile");
+  fullStop("NYI makeThingOnTile");
+}
+
+function makeShot(navi, radius = 0.1, collideDamage = 1) {
+  var xy = getCenter(navi);
+  var vec = dirToIjVector[navi.facingDir];
+  var dist = navi.radius + radius + SHOT_SPAWN_SEPARATION;
+  xy = [x + vec[0] * dist, y + vec[1] * dist];
+  var tile = getTileAtIj(xy.map(c => Math.floor(c)));
+  
+  var shot = makeThingOnTile(tile, 'shot');
+  shot.dir = navi.facingDir;
+  // Airsoft realistic ref value is 1.5 tiles/tick
+  // Use slower value for improved visibility for the time being
+  shot.speed = 0.3;
+  shot.collideDamage = collideDamage;
+}
+
+function tapAbil(navi, slot = 0) {
+  var shot = makeShot(navi);
+}
+
+function startHoldAbil(navi, slot = 0) {
+  fullStop("NYI startHoldAbil");
+}
+
+function releaseHoldAbil(navi, slot = 0) {
+  fullStop("NYI releaseHoldAbil");
+}
+
 function makeMinion(startTile, isTeamB, name = "minion") {
   if (!startTile) fullStop("invalid startTile to makeNavi");
   var minionDiv = document.createElement('div');
