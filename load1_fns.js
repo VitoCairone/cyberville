@@ -10,6 +10,11 @@ function isRat(x) { return x >= 0 && x < 1; }
 function prodSqrs(a, b) { return a * a + b * b; }
 
 const zoneMap = `Tile Map
+  1110000000000111
+  1111111111111111
+  1110000000000111`
+
+const zoneMapAlt = `Tile Map
   000111001010101010100000
   000111111111111111110000
   000111010101010101010000
@@ -42,6 +47,7 @@ function makeWorld() {
     tiles: [],
     navis: [],
     crystals: [],
+    towers: [],
     nextCrystalId: 0,
     tick: 0,
     resonanceFrame: 0,
@@ -258,6 +264,73 @@ function makeGridFromMap(isOneToNine = true) {
   });
   world.tiles.filter(tile => tile.i % 3 === 1 && tile.j % 3 === 1)
     .forEach(tile => makeCrystalOnTile(tile));
+}
+
+function makeTower(startTile, isTeamB) {
+  if (!startTile) fullStop("invalid startTile to makeTower");
+  var towerDiv = document.createElement('div');
+  // TODO: set id
+  towerDiv.className = `tower`;
+  spriteLayer.appendChild(towerDiv);
+  var tower = {
+    type: "tower",
+    div: towerDiv,
+    radius: 0.495,
+    speed: 0,
+    across: 0.5,
+    down: 0.5,
+    facingDir: isTeamB ? 5 : 1,
+    isTeamB: isTeamB,
+    isPermRooted: true,
+  };
+
+  // TODO: DRY repeated logic in methods for creating Things
+
+  startTile.contents.push(tower);
+  world.towers.push(tower);
+  return tower;
+}
+
+function makeMinion(startTile, isTeamB, name = "minion") {
+  if (!startTile) fullStop("invalid startTile to makeNavi");
+  var minionDiv = document.createElement('div');
+  // TODO: set ID
+  minionDiv.className = name === "minion" ? `minion` : `minion ${name}`;
+  
+  if (name !== "minion") minionDiv.className
+  spriteLayer.appendChild(minionDiv);
+  var minion = {
+    name: name,
+    type: "minion",
+    div: minionDiv,
+    pose: {
+      name: "stand",
+      frame: 0,
+      frameHeldTks: 1,
+      heldTks: 1,
+      heldWithFacingTks: 1,
+      size: [0, 0], // set by setPose / setFacingDir
+      nFrames: 1, // copy from dataFor when poses changes
+      dataFor: dataFor
+    },
+    radius: 3, // TODO: check actual value
+    speed: 0,
+    across: 0.5,
+    down: 0.5,
+    facingDir: isTeamB ? 5 : 1,
+    onTile: startTile,
+    isTeamB: isTeamB,
+    decide: {
+      code: "S",
+      val: 8,
+      pat: [],
+      idx: 0,
+      until: -1
+    }
+  };
+  startTile.contents.push(minion);
+  world.minions.push(minion);
+  return minion;
 }
 
 function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
