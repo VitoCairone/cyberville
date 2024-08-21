@@ -102,6 +102,12 @@ function applyTickToNavi(navi) {
   if (didChange) updateNaviImage(navi);
 }
 
+function isWeakTo(thing, atkElem) {
+  if (!thing.kind) fullStop("unkind thing to isWeakTo");
+  var thingElem = thing.elem || 'norm';
+  return weakMap[thingElem] === atkElem;
+}
+
 function doCirclesOverlap(aCtr, bCtr, aRad, bRad) {
   var [dx, dy] = [aCtr[0] - bCtr[0], aCtr[1] - bCtr[1]];
   var radSum = aRad + bRad;
