@@ -437,10 +437,50 @@ function makeFountain(startTile, isTeamB) {
 }
 
 const SHOT_SPAWN_SEPARATION = 0.1;
+const VALID_KINDS = ['navi', 'tower', 'minion', 'shot', 'fountain'];
 
-function makeThingOnTile(tile, kind) {
-  if (!tile || !kind) fullStop("falsy inputs to makeThingOnTile");
-  fullStop("NYI makeThingOnTile");
+function makeThingOnTile(startTile, kind, isTeamB, name = null) {
+  if (!VALID_KINDS.includes(kind)) fullStop("invalid kind to makeThingOnTile");
+  if (!startTile) fullStop("invalid startTile to makeThingOnTile");
+  var thingDiv = document.createElement('div');
+  if (kind === "navi") thingDiv.id = `navi ${name} team-${isTeamB}`;
+  thingDiv.className = name ? `${kind} ${name} team-${isTeamB}` : `${kind} team-${isTeamB}`;
+  spriteLayer.appendChild(thingDiv);
+  var thing = {
+    kind: kind,
+    div: thingDiv,
+    pose: {
+      name: "stand",
+      frame: 0,
+      frameHeldTks: 1,
+      heldTks: 1,
+      heldWithFacingTks: 1,
+      size: [0, 0], // set by setPose / setFacingDir, TODO: fix to set here!!
+      nFrames: 1, // copy from dataFor when poses changes
+      dataFor: dataFor
+    },
+    radius: 0.4,
+    speed: 0,
+    across: 0.5,
+    down: 0.5,
+    facingDir: isTeamB ? 5 : 1,
+    onTile: startTile,
+    isTeamB: isTeamB,
+    // move this to makeNavi
+    decide: {
+      code: "S",
+      val: 8,
+      pat: [],
+      idx: 0,
+      until: -1
+    }
+  };
+  if (name) thing.name = name;
+
+  startTile.contents.push(thing);
+  world[kind + 's'].push(thing);
+
+  return thing;
 }
 
 function makeShot(navi, radius = 0.1, collideDamage = 1) {
