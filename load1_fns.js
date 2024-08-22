@@ -221,18 +221,44 @@ function getCenter(thing) {
   return [thing.onTile.i + thing.across, thing.onTile.j + thing.down];
 }
 
+function triggerKO(thing) {
+  if (thing.name) console.log(`${thing.name} is KOd`);
+  if (thing.kind === "navi") {
+    moveNaviToTile(world.fountains[navi.isTeamB]);
+    thing.hp = 1;
+  } else {
+    removeThing(thing);
+  }
+}
+
+function impartDamage(thing, amount) {
+  if (!thing || !thing.hp || !amount || amount < 0) return;
+  thing.hp -= amount;
+  if (thing.hp < 0) triggerKO(thing);
+}
+
 function handleCollisions() {
   // TODO: this does nMovers^2 / 2 comparisons
   // which is fine for now because there are very few movers 
-  // when there are more movers use tiles instead of O(n^2) compare
+  // when there are more movers use tile sweeps instead of O(n^2) compare
 
   var collisions = [];
-  // navi vs navy
-  world.navis.forEach((navi, idx) => {
-    world.navis.slice(idx + 1).forEach(other => {
-      var collideTk = whenWillThingsCollideTk(navi, other);
-      if (collideTk <= 0) fullStop(`navi-navi collideTk=${collideTk}`);
-      if (collideTk <= 1) collisions.push([navi, other, collideTk]);
+  var stills = world.fountains.concat(world.towers);
+  var movers = world.navis.concat(world.minions).concat(world.shots);
+
+  stills.forEach(still => {
+    movers.forEach(other => {
+      var collideTk = whenWillThingsCollideTk(still, other);
+      if (collideTk <= 0) fullStop(`still-mover collideTk=${collideTk}`);
+      if (collideTk <= 1) collisions.push([still, other, collideTk]);
+    })
+  });
+
+  movers.forEach((mover, idx) => {
+    movers.slice(idx + 1).forEach(other => {
+      var collideTk = whenWillThingsCollideTk(mover, other);
+      if (collideTk <= 0) fullStop(`mover-mover collideTk=${collideTk}`);
+      if (collideTk <= 1) collisions.push([mover, other, collideTk]);
     });
   });
   
@@ -246,21 +272,36 @@ function handleCollisions() {
   }
   
   collisions.forEach(coll => {
-    if (coll[2] === 0) return; // TODO: re-evaluate how this should be handled
+    var [a, b, timeToCollide] = coll;
+
+    if (timeToCollide === 0) return; // TODO: re-evaluate how this should be handled
     // and note that there is already a direct overlap check every tick
 
-    [coll[0], coll[1]].forEach(navi => {
-      if (navi.speed > 0) moveNavi(navi, ...getVel(navi, coll[2]));
+    // advance to point of impact
+    [a, b].forEach(thing => {
+      // TODO: make moveThing!!!
+      if (thing.speed > 0) moveThing(thing, ...getVel(thing, timeToCollide));
     });
 
-    // temporary hack resolution: instant bounce-off from the impact
-    // moving backwards along the incoming line
-    [coll[0], coll[1]].forEach(navi => {
-      if (navi.speed > 0) {
-        navi.facingDir = (navi.facingDir + 4) % 8;
-        moveNavi(navi, ...getVel(navi, 1 - coll[2]));
-      };
-    });
+    if (b.kind === 'shot' && a.kind !== 'shot') {
+      if (b.isMelee) {
+        b.struck ||= [];
+        if (!b.struck.includes(a) && a !== b.maker) {
+          impartDamage(a, b.collideDamage);
+          b.struck.push(a);
+        }
+      } else {
+        impartDamage(a, b.collideDamage);
+        removeThing(b);
+      }
+    } else if (b.kind !== 'shot') {
+      [a, b].forEach(thing => {
+        if (thing.speed > 0) {
+          thing.facingDir = (thing.facingDir + 4) % 8;
+          moveThing(thing, ...getVel(thing, 1 - timeToCollide));
+        };
+      });
+    }
   });
 }
 
@@ -475,31 +516,137 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
   return thing;
 }
 
-function makeShot(navi, radius = 0.1, collideDamage = 1) {
+function makeShot(navi, radius = 0.1, collideDamage = 1, sweepDuration = 0) {
   var xy = getCenter(navi);
   var vec = dirToIjVector[navi.facingDir];
-  var dist = navi.radius + radius + SHOT_SPAWN_SEPARATION;
+
+  // sweeps (used for melee) are centered on the edge of the navi
+  // while other shots are spawned on non-overlapping points
+  var dist = navi.radius;
+  if (!sweepDuration) dist += radius + SHOT_SPAWN_SEPARATION;
   xy = [x + vec[0] * dist, y + vec[1] * dist];
   var tile = getTileAtIj(xy.map(c => Math.floor(c)));
   
-  var shot = makeThingOnTile(tile, 'shot');
-  shot.dir = navi.facingDir;
-  // Airsoft realistic ref value is 1.5 tiles/tick
-  // Use slower value for improved visibility for the time being
-  shot.speed = 0.3;
+  var shot = makeThingOnTile(tile, 'shot', navi.isTeamB);
+  shot.facingDir = navi.facingDir;
+  shot.radius = radius;
+  shot.maker = navi;
+  if (sweepDuration) {
+    shot.isMelee = true;
+    shot.speed = navi.speed;
+  } else {
+    // Airsoft pellet realistic ref value is 1.5 tiles/tick
+    // Use slower value for improved visibility for the time being
+    shot.speed = navi.speed + 0.3;
+  }
   shot.collideDamage = collideDamage;
 }
 
-function tapAbil(navi, slot = 0) {
-  var shot = makeShot(navi);
+function meleeSweep(navi, abil) {
+  makeShot(navi, abil.range, abil.damage, abil.execution);
 }
 
-function startHoldAbil(navi, slot = 0) {
+const allAbilsByName = {
+  'Sword': {
+    style: 'melee',
+    damage: 30,
+    range: 1,
+    windup: 4,
+    execution: 12,
+    slotType: 0
+  },
+  'Blaster': {
+    style: 'shot',
+    damage: 10,
+    range: 12,
+    width: 0.25,
+    shotSpeed: 0.3,
+    windup: 4,
+    execution: 4,
+    slotType: 0
+  },
+  'Shield': {
+    style: 'self',
+    damage: 0,
+    shieldHp: 50,
+    windup: 9,
+    execution: 1,
+    slotType: 1
+  },
+  'Dash': {
+    style: 'dash',
+    damage: 0,
+    range: 3,
+    windup: 0,
+    execution: 3 * 3 / refRunSpeed,
+    slotType: 1,
+    // for calibration travel boost last after dash ends
+    selfBoost: { boost: 'travel', amount: 200, duration: 3 * 3 / refRunSpeed + 20 }
+  },
+  'Energize': {
+    style: 'self',
+    damage: 0,
+    selfBoosts: [
+      {boost: 'rate', amount: 15, duration: 3 * 60},
+      {boost: 'power', amount: 15, duration: 3 * 60},
+    ],
+    windup: 3,
+    execution: 3,
+    slotType: 1
+  },
+  // for calibration, Power Shot is identical to Blaster in every way but
+  // damage and slotType
+  'Power Shot': {
+    style: 'shot',
+    damage: 50,
+    range: 12,
+    width: 0.25,
+    shotSpeed: 0.3,
+    windup: 4,
+    execution: 4,
+    slotType: 1
+  },
+  // for calibration, Lethal shot is identical to Blaster in every way but
+  // damage and slotType
+  'Lethal Shot': {
+    style: 'shot',
+    damage: 300,
+    range: 12,
+    width: 0.25,
+    shotSpeed: 0.3,
+    windup: 4,
+    execution: 4,
+    reset: 0,
+    slotType: 2
+  }
+}
+
+Object.keys(allAbilsByName).forEach(name => allAbilsByName[name].name = name);
+
+function getAbilByShot(navi, slot) {
+  return allAbilsByName(navi.abils[0])
+}
+
+function beginCooldownAbil(navi, slot) {
+  var abil = getAbilBySlot(navi, slot);
+}
+
+function beginCooldownAbil(navi, slot) {
+  fullStop("NYI beginCooldownAbil");
+}
+
+function registerTapAbil(navi, slot = 0) {
+  makeShot(navi);
+  beginCooldownAbil(navi, slot);
+}
+
+function registerHoldAbil(navi, slot = 0) {
   fullStop("NYI startHoldAbil");
 }
 
 function releaseHoldAbil(navi, slot = 0) {
   fullStop("NYI releaseHoldAbil");
+  beginCooldownAbil(navi, slot);
 }
 
 function makeMinion(startTile, isTeamB, name = "minion") {
@@ -626,6 +773,11 @@ function moveNaviToTile(navi, newTile) {
   
 
   return true;
+}
+
+function moveThing(thing, across, down) {
+  if (thing.kind === "navi") return moveNavi(thing);
+  fullStop("NYI moveThing");
 }
 
 function moveNavi(navi, across, down) {
@@ -763,13 +915,8 @@ function removeThing(thing) {
   // TODO: collect a list of empty air tiles and remove those
   // which are not needed at the end, to avoid removing tiles still in use
   if (tile.isAir && tile.contents.length === 0) removeTile(tile);
-  switch (thing.type) {
-    case 'navi':
-      world.navis = without(world.navis, thing);
-      break;
-    case 'crystal':
-      world.crystals = without(world.crystals, thing);
-  }
+  var kindGroup = thing.kind + 's';
+  world[kindGroup] = without(world[kindGroup], thing);
 }
 
 function setPose(navi, poseName) {
