@@ -277,7 +277,7 @@ function tileBasedCollisions() {
   var thingsByTile = {};
 
   allThings.forEach(thing => {
-    var freeSweepTiles = tilesInFreeSweep(thing);
+    var freeSweepTiles = getTilesForSweep(thing);
     // freeSweepTilesByThing[thing] = freeSweepTiles;
 
     var tested = {};
