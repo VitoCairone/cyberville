@@ -237,30 +237,94 @@ function impartDamage(thing, amount) {
   if (thing.hp < 0) triggerKO(thing);
 }
 
+function getTilesForSweep(thing) {
+    const tiles = [];
+    const [cx, cy] = getCenter(thing);
+    const rad = thing.radius;
+  
+    let [xLo, yLo, xHi, yHi] = [cx - rad, cy - rad, cx + rad, cy + rad];
+
+    if (thing.speed) {
+      const [vx, vy] = getVel(thing);
+
+      const endXLo = xLo + vx;
+      const endYLo = yLo + vy;
+      const endXHi = xHi + vx;
+      const endYHi = yHi + vy;
+
+      xLo = Math.min(xLo, endXLo);
+      yLo = Math.min(yLo, endYLo);
+      xHi = Math.max(xHi, endXHi);
+      yHi = Math.max(yHi, endYHi);
+    }
+
+    let [iLo, jLo, iHi, jHi] = [xLo, yLo, xHi, yHi].map(val => Math.floor(val));
+
+    for (let i = iLo; i <= iHi; i++)
+      for (let j = jLo; j <= jHi; j++)
+        tiles.push(getTileAtIj(i, j));
+
+    return tiles;
+}
+
+function tileBasedCollisions() {
+  var collisions = [];
+  var stills = world.fountains.concat(world.towers);
+  var movers = world.navis.concat(world.minions).concat(world.shots);
+
+  var allThings = stills.concat(movers);
+  // var freeSweepTilesByThing = {};
+  var thingsByTile = {};
+
+  allThings.forEach(thing => {
+    var freeSweepTiles = tilesInFreeSweep(thing);
+    // freeSweepTilesByThing[thing] = freeSweepTiles;
+
+    var tested = {};
+    freeSweepTiles.forEach(tile => {
+      if (thingsByTile[tile]) {
+        var others = thingsByTile[tile].filter(other => !tested[other]);
+        others.forEach(other => {
+          tested[other] = true;
+          var collideTk = whenWillThingsCollideTk(thing, other);
+          if (collideTk <= 0) fullStop(`collideTk=${collideTk}`);
+          if (collideTk <= 1) collisions.push([thing, other, collideTk]);
+        });
+        thingsByTile[tile].push(thing);
+      }
+      thingsByTile[tile] = [thing];
+    });
+  });
+
+  return collisions;
+}
+
 function handleCollisions() {
   // TODO: this does nMovers^2 / 2 comparisons
   // which is fine for now because there are very few movers 
   // when there are more movers use tile sweeps instead of O(n^2) compare
 
-  var collisions = [];
-  var stills = world.fountains.concat(world.towers);
-  var movers = world.navis.concat(world.minions).concat(world.shots);
+  // var collisions = [];
+  // var stills = world.fountains.concat(world.towers);
+  // var movers = world.navis.concat(world.minions).concat(world.shots);
 
-  stills.forEach(still => {
-    movers.forEach(other => {
-      var collideTk = whenWillThingsCollideTk(still, other);
-      if (collideTk <= 0) fullStop(`still-mover collideTk=${collideTk}`);
-      if (collideTk <= 1) collisions.push([still, other, collideTk]);
-    })
-  });
+  // stills.forEach(still => {
+  //   movers.forEach(other => {
+  //     var collideTk = whenWillThingsCollideTk(still, other);
+  //     if (collideTk <= 0) fullStop(`still-mover collideTk=${collideTk}`);
+  //     if (collideTk <= 1) collisions.push([still, other, collideTk]);
+  //   })
+  // });
 
-  movers.forEach((mover, idx) => {
-    movers.slice(idx + 1).forEach(other => {
-      var collideTk = whenWillThingsCollideTk(mover, other);
-      if (collideTk <= 0) fullStop(`mover-mover collideTk=${collideTk}`);
-      if (collideTk <= 1) collisions.push([mover, other, collideTk]);
-    });
-  });
+  // movers.forEach((mover, idx) => {
+  //   movers.slice(idx + 1).forEach(other => {
+  //     var collideTk = whenWillThingsCollideTk(mover, other);
+  //     if (collideTk <= 0) fullStop(`mover-mover collideTk=${collideTk}`);
+  //     if (collideTk <= 1) collisions.push([mover, other, collideTk]);
+  //   });
+  // });
+
+  var collisions = tileBasedCollisions();
   
   // TODO: ensure an object doesn't get moved more than 1 tick worth
   // if they are collided into more than once
@@ -279,7 +343,7 @@ function handleCollisions() {
 
     // advance to point of impact
     [a, b].forEach(thing => {
-      // TODO: make moveThing!!!
+      // TODO: make moveThing for non-navis!!!
       if (thing.speed > 0) moveThing(thing, ...getVel(thing, timeToCollide));
     });
 

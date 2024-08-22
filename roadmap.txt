@@ -1,0 +1,16 @@
+Roadmap for Simplified MOBA Play
+
+(1) create Red and Blue Fountains
+
+(2) create Minions
+
+(3) define Minion movement
+
+(4) create Red and Blue Towers
+
+(5) create Shot as a type of Mover
+
+(6) define Navi and Minion shot creation
+
+(7) define collide behavior for all five classes of thing:
+    Navi, Fountain, Tower, Minion, Shot
