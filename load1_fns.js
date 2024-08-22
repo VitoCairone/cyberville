@@ -90,7 +90,7 @@ function applyTickToNavi(navi) {
       switch (navi.facingDir) {
         case 0: newDir = navi.across <= 0.5 ? 1 : 7; break;
         case 1: newDir = 3; break;
-        case 2: newDir = up <= 0.5 ? 3 : 1; break;
+        case 2: newDir = navi.down <= 0.5 ? 3 : 1; break;
         case 3: newDir = 5; break;
         case 4: newDir = navi.across >= 0.5 ? 5 : 3; break;
         case 5: newDir = 7; break;
@@ -238,33 +238,38 @@ function impartDamage(thing, amount) {
 }
 
 function getTilesForSweep(thing) {
-    const tiles = [];
-    const [cx, cy] = getCenter(thing);
-    const rad = thing.radius;
-  
-    let [xLo, yLo, xHi, yHi] = [cx - rad, cy - rad, cx + rad, cy + rad];
+  if (thing.kind === "fountain" || thing.kind === "tower")
+    return [thing.onTile];
 
-    if (thing.speed) {
-      const [vx, vy] = getVel(thing);
+  const tiles = [];
+  const [cx, cy] = getCenter(thing);
+  const rad = thing.radius;
 
-      const endXLo = xLo + vx;
-      const endYLo = yLo + vy;
-      const endXHi = xHi + vx;
-      const endYHi = yHi + vy;
+  let [xLo, yLo, xHi, yHi] = [cx - rad, cy - rad, cx + rad, cy + rad];
 
-      xLo = Math.min(xLo, endXLo);
-      yLo = Math.min(yLo, endYLo);
-      xHi = Math.max(xHi, endXHi);
-      yHi = Math.max(yHi, endYHi);
-    }
+  if (thing.speed) {
+    const [vx, vy] = getVel(thing);
 
-    let [iLo, jLo, iHi, jHi] = [xLo, yLo, xHi, yHi].map(val => Math.floor(val));
+    const endXLo = xLo + vx;
+    const endYLo = yLo + vy;
+    const endXHi = xHi + vx;
+    const endYHi = yHi + vy;
 
-    for (let i = iLo; i <= iHi; i++)
-      for (let j = jLo; j <= jHi; j++)
-        tiles.push(getTileAtIj(i, j));
+    xLo = Math.min(xLo, endXLo);
+    yLo = Math.min(yLo, endYLo);
+    xHi = Math.max(xHi, endXHi);
+    yHi = Math.max(yHi, endYHi);
+  }
 
-    return tiles;
+  let [iLo, jLo, iHi, jHi] = [xLo, yLo, xHi, yHi].map(val => Math.floor(val));
+
+  if (iLo === iHi && jLo === jHi) return [thing.onTile];
+
+  for (let i = iLo; i <= iHi; i++)
+    for (let j = jLo; j <= jHi; j++)
+      tiles.push(getTileAtIj(i, j));
+
+  return tiles.filter(x => x);
 }
 
 function tileBasedCollisions() {
@@ -272,23 +277,24 @@ function tileBasedCollisions() {
   var stills = world.fountains.concat(world.towers);
   var movers = world.navis.concat(world.minions).concat(world.shots);
 
-  var allThings = stills.concat(movers);
-  // var freeSweepTilesByThing = {};
+  var allThings = stills.concat(movers).filter(x => x);
   var thingsByTile = {};
 
   allThings.forEach(thing => {
     var freeSweepTiles = getTilesForSweep(thing);
-    // freeSweepTilesByThing[thing] = freeSweepTiles;
 
     var tested = {};
     freeSweepTiles.forEach(tile => {
       if (thingsByTile[tile]) {
-        var others = thingsByTile[tile].filter(other => !tested[other]);
-        others.forEach(other => {
-          tested[other] = true;
-          var collideTk = whenWillThingsCollideTk(thing, other);
+        var priors = thingsByTile[tile].filter(prior => !tested[prior]);
+        priors.forEach(prior => {
+          tested[prior] = true;
+          if (thing.kind === "shot")
+            if (prior.kind === "shot" || (thing.isMelee && thing.maker === prior))
+              return;
+          var collideTk = whenWillThingsCollideTk(thing, prior);
           if (collideTk <= 0) fullStop(`collideTk=${collideTk}`);
-          if (collideTk <= 1) collisions.push([thing, other, collideTk]);
+          if (collideTk <= 1) collisions.push([prior, thing, collideTk]);
         });
         thingsByTile[tile].push(thing);
       }
@@ -388,7 +394,7 @@ function makeTile(i, j, isAir = false) {
   tileDiv.style.zIndex = "-100000";
   tileLayer.appendChild(tileDiv);
   var tile = {
-    type: "tyle",
+    kind: "tile",
     i: i,
     j: j,
     div: tileDiv,
@@ -434,7 +440,7 @@ function makeTower(startTile, isTeamB) {
   towerDiv.className = `tower`;
   spriteLayer.appendChild(towerDiv);
   var tower = {
-    type: "tower",
+    kind: "tower",
     div: towerDiv,
     radius: 0.495,
     speed: 0,
@@ -523,7 +529,7 @@ function makeFountain(startTile, isTeamB) {
   fountainDiv.className = `fountain team-${isTeamB}`;
   spriteLayer.appendChild(fountainDiv);
   var fountain = {
-    type: "fountain",
+    kind: "fountain",
     div: fountainDiv,
     radius: 0.495,
     speed: 0,
@@ -723,7 +729,7 @@ function makeMinion(startTile, isTeamB, name = "minion") {
   spriteLayer.appendChild(minionDiv);
   var minion = {
     name: name,
-    type: "minion",
+    kind: "minion",
     div: minionDiv,
     pose: {
       name: "stand",
@@ -798,7 +804,7 @@ function makeCrystalOnTile(tile) {
 
   var crystal = {
     id: id,
-    type: "crystal",
+    kind: "crystal",
     div: crysDiv,
     onTile: tile,
     across: 0.5,
@@ -840,7 +846,7 @@ function moveNaviToTile(navi, newTile) {
 }
 
 function moveThing(thing, across, down) {
-  if (thing.kind === "navi") return moveNavi(thing);
+  if (thing.kind === "navi") return moveNavi(thing, across, down);
   fullStop("NYI moveThing");
 }
 
@@ -887,7 +893,7 @@ function moveNavi(navi, across, down) {
   var overlaps = getThingsNaviOverlaps(navi);
   // for now the only cases detected by overlap are crystals, so handle as such
   overlaps.forEach(thing => {
-    if (thing.type === "crystal") return pickupCrystal(navi, thing);
+    if (thing.kind === "crystal") return pickupCrystal(navi, thing);
     console.log(`tick=${world.tick} navis overlap: ${navi.name} and ${thing.name}`);
   });
   [navi.across, navi.down] = [newAcross, newDown].map(x => {
@@ -1030,7 +1036,7 @@ function setNaviBackground(navi) {
 
 function setTileColor(tile, isToBlue) {
   if (tile.isBlue === isToBlue) return "NOOP";
-  if (tile.contents.filter(x => x.type === "navi" && x.isTeamB === !isToBlue).length) return false;
+  if (tile.contents.filter(x => x.kind === "navi" && x.isTeamB === !isToBlue).length) return false;
   tile.isBlue = isToBlue;
   tile.div.classList.replace(isToBlue ? "red" : "blue", isToBlue ? "blue" : "red");
   return true;
