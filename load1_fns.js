@@ -457,7 +457,7 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
       heldWithFacingTks: 1,
       size: [0, 0], // set by setPose / setFacingDir, TODO: fix to set here!!
       nFrames: 1, // copy from dataFor when poses changes
-      dataFor: dataFor
+      dataFor: null // TODO: fix this...
     },
     radius: 0.4,
     speed: 0,
@@ -465,15 +465,7 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
     down: 0.5,
     facingDir: isTeamB ? 5 : 1,
     onTile: startTile,
-    isTeamB: isTeamB,
-    // move this to makeNavi
-    decide: {
-      code: "S",
-      val: 8,
-      pat: [],
-      idx: 0,
-      until: -1
-    }
+    isTeamB: isTeamB
   };
   if (name) thing.name = name;
 
@@ -554,52 +546,31 @@ function makeMinion(startTile, isTeamB, name = "minion") {
 
 function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeNavi");
-  var naviDiv = document.createElement('div');
-  naviDiv.id = name;
-  naviDiv.className = `navi ${name}`;
-  spriteLayer.appendChild(naviDiv);
-  var navi = {
-    name: name,
-    type: "navi",
-    div: naviDiv,
-    pose: {
-      name: "stand",
-      frame: 0,
-      frameHeldTks: 1,
-      heldTks: 1,
-      heldWithFacingTks: 1,
-      size: [0, 0], // set by setPose / setFacingDir
-      nFrames: 1, // copy from dataFor when poses changes
-      dataFor: dataFor
-    },
-    radius: shadowToRadius(shadowLen),
-    speed: 0,
-    across: 0.5,
-    down: 0.5,
-    facingDir: 4,
-    onTile: startTile,
-    isTeamB: isTeamB,
-    decide: {
-      code: "S",
-      val: 8,
-      pat: [],
-      idx: 0,
-      until: -1
-    },
-    mem: {
-      tileVisits: [],
-      tilesSeenHash: {}
-    },
-    scoreHist: {
-      pickups: 0,
-      bonks: 0,
-      revisits: 0,
-      visitedAt: {}
-    }
+  var navi = makeThingOnTile(startTile, 'navi', isTeamB, name);
+
+  // TODO: fix this...
+  navi.radius = shadowToRadius(shadowLen);
+  navi.pose.dataFor = dataFor;
+
+  navi.decide = {
+    code: "S",
+    val: 8,
+    pat: [],
+    idx: 0,
+    until: -1
   };
-  startTile.contents.push(navi);
+  navi.mem = {
+    tileVisits: [],
+    tilesSeenHash: {}
+  };
+  navi.scoreHist = {
+    pickups: 0,
+    bonks: 0,
+    revisits: 0,
+    visitedAt: {}
+  }
+
   naviRun(navi);
-  world.navis.push(navi);
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
