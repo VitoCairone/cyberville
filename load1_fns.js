@@ -9,35 +9,40 @@ function pxToMeters(px) { return px * root2 / 28; }
 function isRat(x) { return x >= 0 && x < 1; }
 function sumSqrs(a, b) { return a * a + b * b; }
 
+// note that makeGridToMap is oneToNine = true by default
+// e.g. every 1/0 becomes a group of 9 tiles or empty spaces
 const zoneMap = `Tile Map
   1110000000000111
   1111111111111111
   1110000000000111`
 
-const zoneMapAlt = `Tile Map
-  000111001010101010100000
-  000111111111111111110000
-  000111010101010101010000
-  000000000000000000010000
-  111001110111111111111110
-  001000100100000000010010
-  001000110111101110010111
-  001000100100000010010010
-  001000110100111010010111
-  001000100100111010010010
-  001000110100111010010111
-  001111100100010010010010
-  000000110100010010010111
-  000000100100010010010010
-  000000101110010010111000
-  000000111110011111111000
-  000000001110000000111000
-  000000000100101010010000
-  000000001111111111010000
-  000000000010101010010000
-  000000000000000000111000
-  000000000000000000111000
-  000000000000000000111000`;
+// these are in actual tile coordinates AFTER oneToNine
+const fountainStartIjs = [[4, 4], [43, 4]];
+
+// const zoneMapBNRO1 = `Tile Map
+//   000111001010101010100000
+//   000111111111111111110000
+//   000111010101010101010000
+//   000000000000000000010000
+//   111001110111111111111110
+//   001000100100000000010010
+//   001000110111101110010111
+//   001000100100000010010010
+//   001000110100111010010111
+//   001000100100111010010010
+//   001000110100111010010111
+//   001111100100010010010010
+//   000000110100010010010111
+//   000000100100010010010010
+//   000000101110010010111000
+//   000000111110011111111000
+//   000000001110000000111000
+//   000000000100101010010000
+//   000000001111111111010000
+//   000000000010101010010000
+//   000000000000000000111000
+//   000000000000000000111000
+//   000000000000000000111000`;
 
 // const pickupSound = new Audio('./sounds/pickup.mp3');
 
@@ -699,6 +704,39 @@ const allAbilsByName = {
     execution: 4,
     slotType: 1
   },
+  'Freeze': {
+    mayMake: true,
+
+    slotType: 1
+  },
+  'Style Change': {
+    isUnique: true,
+    /* certain unique powers are coded in-places.
+    A navi with Style Change stores up to 3 earned Styles.
+    
+    Tap: Replaces Q, W, E, and R with available Styles.
+
+    Changing to a Style will change the user's Element
+    and all Abilities except Style Change to match
+    the navi the Style was earned from.
+
+    The change has no expiration and is not disruptable.
+    
+    Style Change button is always the user's builtin Style.
+    A new Style is granted on KO (the KOd navi)
+    or on Assist (the ally who earned the KO).
+    Earning a KO or Assist always refreshes Style Changes.
+
+    Re-selecting the currently active Style reduces cooldown to 1 second.
+
+    When 3 earned Styles are held and a new one is earned:
+    * if an earned Style is active, it is protected
+    * the most-used earned Style is protected
+    * The oldest unprotected Style is discarded
+
+    */
+    slotType: 1
+  },
 
   // SlotType 2
 
@@ -1006,6 +1044,34 @@ function naviWalk(navi) {
   navi.speed = refWalkSpeed;
 }
 
+function setThingSpeed(thing) {
+  // TODO: refactor so speed is being set only here
+  // speed should be the actual physics value in tiles/tick
+
+  if (!thing.isRunning) {
+    thing.speed = 0;
+    return 0;
+  }
+
+  // FOR NOW don't do external vectors or sliding
+  // current logic is simplified to assume a thing moves
+  // in its facing direction or not at all
+  // TODO: external vectors, sliding
+
+  let speed = refRunSpeed;
+
+  thing.effects ||= []; // TODO move this to makeThing
+  travelEffs = thing.effects.filter(eff => eff.effect === "travel");
+  if (travelEffs.length) {
+    var sum = travelEffs.reduce((sum, eff) => sum + eff.value, 0);
+    var mod = sum >= 0 ? ((sum + 100) / 100) : (100 / (100 - sum));
+    speed *= mod;
+  }
+  
+  thing.speed = speed;
+  return speed;
+}
+
 function naviRun(navi) {
   setPose(navi, "walk");
   navi.speed = refRunSpeed;
@@ -1130,6 +1196,42 @@ function setNaviBackground(navi) {
     fullStop("invalid pose name");
   }
 }
+
+
+/* NEW COLOR CHANGE RULES
+
+  Things (and Contested Tiles) vote continuously.
+  All Tiles begin at 0 and Uninitialized.
+  Uninitialized Tiles don't vote and ignore votes from Tiles,
+    but flip as soon as any Thing vote is registered
+  All Blue Team things vote + and Red Team things vote -.
+  A Red tile flips Blue when it hits +100.
+  A Blue tile flips Red when it hits -100.
+  A Tile votes 1 for itself and its surround
+  A Minion votes 2 for its onTile and surround
+
+  Navis don't vote, but they block all opposed votes
+  for the tile they stand on, ensuring it cannot flip
+  against them.
+
+  When a Thing is destroyed by an enemy's attack,
+  it immediately flips its tile to the enemy color
+  and sets it to max votes.
+
+  When a Navi is destroyed and grants an enemy KO,
+  its surround is also flipped to the enemy color
+  and set to max votes.
+
+  If needed for runtime, consider having things and tiles
+  vote in segmented groups, so that every thing and tile
+  votes e.g. once / 10 ticks instead of every tick
+
+  COLOR EFFECTS
+
+  When standing on the opponent color,
+  Navis have Travel -5
+  Any Ability used gets Offside Penalty (Rate -100) until refreshed
+*/
 
 function setTileColor(tile, isToBlue) {
   if (tile.isBlue === isToBlue) return "NOOP";
@@ -1314,7 +1416,7 @@ rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
 setFacingDir(rock, 7);
 
 const metSpriteData = {
-  "stand": { nFrames: 1, size: [28, 26] };
+  "stand": { nFrames: 1, size: [28, 26] },
   "walk": {
     nFrames: 6,
     sizesDirArr: [ [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26] ]
