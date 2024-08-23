@@ -8,8 +8,8 @@ const ticksPerHour = 60 * 60 * 60;
 function mphToTpt(mph) { return mph * tilesPerMile / ticksPerHour; }
 function tptToMph(tpt) { return tpt * ticksPerHour / tilesPerMile; }
 
-const refWalkSpeed = mphToTpt(3.1);
-const refRunSpeed = mphToTpt(7.25);
+const refWalkSpeed = mphToTpt(3.1); // ~ 0.023
+const refRunSpeed = mphToTpt(7.25); // ~ 0.054
 
 const pickupSoundEl = document.getElementById('pickup-audio');
 const big1SoundEl = document.getElementById('bg-1-audio');
@@ -43,5 +43,3 @@ const weakMap = {
   'metal': 'metal',
   'sky': 'sky',
 }
-
-const VOID_SPEED_MOD = 1.15;

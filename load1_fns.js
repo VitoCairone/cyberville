@@ -7,7 +7,7 @@ var isMuted = true;
 function metersToPx(m) { return m * 28 / root2; }
 function pxToMeters(px) { return px * root2 / 28; }
 function isRat(x) { return x >= 0 && x < 1; }
-function prodSqrs(a, b) { return a * a + b * b; }
+function sumSqrs(a, b) { return a * a + b * b; }
 
 const zoneMap = `Tile Map
   1110000000000111
@@ -55,7 +55,7 @@ function makeWorld() {
     tileMins: [Infinity, Infinity],
     tileMaxs: [-Infinity, -Infinity],
     cameraNavi: null,
-    isCameraNaviManual: true,
+    isCameraNaviManual: false,
   };
   return world;
 }
@@ -108,6 +108,8 @@ function applyTickToNavi(navi) {
 const WOOD_REGEN_ON_GRASS = 1;
 const FIRE_DOT = 5;
 const FIRE_DOT_DURATION = 20;
+const MIASMA_DOT = 1;
+const MIASMA_DOT_DURATION = 1;
 const ICE_SLOW = 2;
 const ELEC_METAL_HASTE = 1;
 const METAL_SHIELD = 1;
@@ -146,7 +148,10 @@ function afterTickForThing(thing) {
       if (thing.elem !== 'aqua') travelSlow(thing, ICE_SLOW, 5, 'aqua');
     case 'metal':
       if (thing.elem === 'elec') travelHaste(thing, ELEC_METAL_HASTE, 5, 'elec');
-      if (thing.elem === 'metal' && thing.speed === 0) shieldOverTime(thing, METAL_SHIELD);
+      if (thing.elem === 'metal' && thing.speed === 0) shieldOverTime(thing, METAL_SHIELD, 'metal');
+      break;
+    case 'miasma':
+      if (thing.elem !== 'void') damageOverTime(thing, MIASMA_DOT, MIASMA_DOT_DURATION, 'void');
       break;
   }
 }
@@ -160,7 +165,7 @@ function isWeakTo(thing, atkElem) {
 function doCirclesOverlap(aCtr, bCtr, aRad, bRad) {
   var [dx, dy] = [aCtr[0] - bCtr[0], aCtr[1] - bCtr[1]];
   var radSum = aRad + bRad;
-  return prodSqrs(dx, dy) < radSum * radSum;
+  return sumSqrs(dx, dy) < radSum * radSum;
 }
 
 function doThingsOverlap(a, b) {  
@@ -463,10 +468,6 @@ const MINION_TRAIN_INTERVAL = 2 * 60;
 const SPAWN_INTERVAL = 30 * 60;
 const START_SPAWN_DELAY = 10 * 60;
 
-function spawnMinion(fountain) {
-  fullStop("NYI spawnMinion");
-}
-
 // NOTE the CURRENT USER HERE is train as in a train (noun) of cars
 
 // TODO: consider revising terms so that
@@ -567,8 +568,8 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
       heldTks: 1,
       heldWithFacingTks: 1,
       size: [0, 0], // set by setPose / setFacingDir, TODO: fix to set here!!
-      nFrames: 1, // copy from dataFor when poses changes
-      dataFor: null // TODO: fix this...
+      nFrames: 1, // copy from spriteData when poses changes
+      spriteData: null // TODO: fix this...
     },
     radius: 0.4,
     speed: 0,
@@ -617,9 +618,12 @@ function meleeSweep(navi, abil) {
 }
 
 const allAbilsByName = {
+  // SlotType 0
+
   'Sword': {
     style: 'melee',
     damage: 30,
+    elem: 'norm',
     range: 1,
     windup: 4,
     execution: 12,
@@ -628,16 +632,32 @@ const allAbilsByName = {
   'Blaster': {
     style: 'shot',
     damage: 10,
+    elem: 'norm',
     range: 12,
-    width: 0.25,
-    shotSpeed: 0.3,
+    width: 0.1,
+    shotSpeed: 0.5,
     windup: 4,
     execution: 4,
     slotType: 0
   },
+  'Arrow': {
+    style: 'shot',
+    damage: 25,
+    elem: 'norm',
+    range: 12,
+    width: 0.25,
+    shotSpeed: 0.3,
+    windup: 12,
+    execution: 3,
+    slotType: 0,
+  },
+
+  // SlotType 1
+
   'Shield': {
     style: 'self',
     damage: 0,
+    elem: 'norm',
     shieldHp: 50,
     windup: 9,
     execution: 1,
@@ -646,16 +666,18 @@ const allAbilsByName = {
   'Dash': {
     style: 'dash',
     damage: 0,
+    elem: 'norm',
     range: 3,
     windup: 0,
     execution: 3 * 3 / refRunSpeed,
     slotType: 1,
     // for calibration travel boost last after dash ends
-    selfBoost: { boost: 'travel', amount: 200, duration: 3 * 3 / refRunSpeed + 20 }
+    selfBoost: { boost: 'travel', amount: 200, duration: 3 * 3 / refRunSpeed }
   },
   'Energize': {
     style: 'self',
     damage: 0,
+    elem: 'norm',
     selfBoosts: [
       {boost: 'rate', amount: 15, duration: 3 * 60},
       {boost: 'power', amount: 15, duration: 3 * 60},
@@ -669,27 +691,79 @@ const allAbilsByName = {
   'Power Shot': {
     style: 'shot',
     damage: 50,
+    elem: 'norm',
     range: 12,
-    width: 0.25,
-    shotSpeed: 0.3,
+    width: 0.1,
+    shotSpeed: 0.5,
     windup: 4,
     execution: 4,
     slotType: 1
   },
-  // for calibration, Lethal shot is identical to Blaster in every way but
+
+  // SlotType 2
+
+  // for calibration, Ultra shot is identical to Blaster in every way but
   // damage and slotType
-  'Lethal Shot': {
+  'Ultra Shot': {
     style: 'shot',
     damage: 300,
+    elem: 'norm',
     range: 12,
-    width: 0.25,
-    shotSpeed: 0.3,
+    width: 0.1,
+    shotSpeed: 0.5,
     windup: 4,
     execution: 4,
     reset: 0,
     slotType: 2
+  },
+  'Slash Wave': {
+    style: 'broadshot',
+    damage: 150,
+    elem: 'norm',
+    reuse: { times: 1, within: 60 },
+    width: 2.0,
+    divisions: 8,
+    shotSpeed: 0.2,
+    windup: 3,
+    execution: 3,
+    slotType: 2
   }
 }
+
+/*
+  CHIPS
+  Blast Shot     = Shot + small radius splash
+  Blast Shot 2   = Shot + mid radius splash
+  Blast Shot 3   = Shot + large radius splash
+  Double Strike  = any Attack Special can be recast within 2 second (1 use)
+  Double Shield  = any Shield Special can be recast within 2 seconds of expiration (1 use)
+  Double Empower = any Empower Special can be recast within 2 seconds
+  Double Recover = any Recover Special can be recast within 2 seconds
+  Double Ability = any Ability can be recast within 2 seconds (1 use)
+  Rapid Fire     = Rate +100 for all Ranged Attack abilities for 2 seconds
+  Berserker      = Rate +100 for all Melee Attack abilities for 3 secounds 
+  Double Dash    = any Move Special can be recast within 2 seconds (1 use)
+  Triple Dash    = any Move Special can be recast within 2 seconds (2 uses)
+  Recover 10     = recover 10
+  Recover 30     = recover 30
+  Recover 50     = recover 50
+  Recover 80     = recover 80
+  Recover 120    = recover 120
+  Recover 150    = recover 150
+  Recover 300    = recover 300
+  Barrier        = 1-strike barrier (10 second duration)
+  Mini Bomb      = Toss small Bomb range 3 dealing 0.5 radius area damage
+  Little Bomb    = Toss small Bomb range 3 dealing 1.0 radius area damage
+  Big Bomb       = Toss Bomb range 3 dealing 2.0 radius area damage
+  Grass Field    = self and surround terrain becomes Grass
+  Ice Field      = self and surround terrain becomes Ice
+  Fire Field     = self and surround terrain becomes Fire
+  Metal Field    = self and surround terrain becomes Metal
+  Poison Field   = self and surround terrain becomes Miasma
+  Reset Field    = self and surround terrain becomes Normal
+  Crack Field    = self and surround terrain becomes Cracked; Cracked become Broken
+  Break Field    = self and surround terrain becomes Broken
+*/
 
 Object.keys(allAbilsByName).forEach(name => allAbilsByName[name].name = name);
 
@@ -720,7 +794,7 @@ function releaseHoldAbil(navi, slot = 0) {
 }
 
 function makeMinion(startTile, isTeamB, name = "minion") {
-  if (!startTile) fullStop("invalid startTile to makeNavi");
+  if (!startTile) fullStop("invalid startTile to makeMinion");
   var minionDiv = document.createElement('div');
   // TODO: set ID
   minionDiv.className = name === "minion" ? `minion` : `minion ${name}`;
@@ -738,8 +812,8 @@ function makeMinion(startTile, isTeamB, name = "minion") {
       heldTks: 1,
       heldWithFacingTks: 1,
       size: [0, 0], // set by setPose / setFacingDir
-      nFrames: 1, // copy from dataFor when poses changes
-      dataFor: dataFor
+      nFrames: 1, // copy from spriteData when poses changes
+      spriteData: spriteData
     },
     radius: 3, // TODO: check actual value
     speed: 0,
@@ -761,13 +835,13 @@ function makeMinion(startTile, isTeamB, name = "minion") {
   return minion;
 }
 
-function makeNavi(name, dataFor, shadowLen, startTile, isTeamB) {
+function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeNavi");
   var navi = makeThingOnTile(startTile, 'navi', isTeamB, name);
 
   // TODO: fix this...
   navi.radius = shadowToRadius(shadowLen);
-  navi.pose.dataFor = dataFor;
+  navi.pose.spriteData = spriteData;
 
   navi.decide = {
     code: "S",
@@ -951,12 +1025,11 @@ function playPickupSound(navi) {
     var ctr = getCenter(navi);
     var camCtr = getCenter(world.cameraNavi);
     var [dx, dy] = [ctr[0] - camCtr[0], ctr[1] - camCtr[1]];
-    var distL2 = prodSqrs(dx, dy);
+    var distL2 = sumSqrs(dx, dy);
     if (distL2 > maxLoudL2) loudness = maxLoudL2 / distL2;
-    if (loudness < 0.01) loudness = 0;
   }
 
-  if (loudness > 0) {
+  if (loudness >= 0.01) {
     pickupSoundEl.volume = loudness;
     pickupSoundEl.load();
     pickupSoundEl.play().catch((err) => { console.log(err); });
@@ -965,7 +1038,7 @@ function playPickupSound(navi) {
 
 function playBackgroundMusic() {
   if (isMuted) return;
-  big1SoundEl.play();
+  big1SoundEl.play().catch((err) => { console.log(err); });
   isBgMusicOn = true;
 }
 
@@ -991,18 +1064,18 @@ function removeThing(thing) {
 
 function setPose(navi, poseName) {
   if (navi.pose.name === poseName) return "NOOP";
-  if (!navi.pose.dataFor.hasOwnProperty(poseName)) fullStop("invalid poseName");
+  if (!navi.pose.spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
   navi.pose.name = poseName;
   navi.pose.frameHeldTks = 1;
   navi.pose.heldTks = 1;
   navi.pose.heldWithFacingTks = 1;
-  var dataForPose = navi.pose.dataFor[poseName];
-  navi.pose.nFrames = dataForPose.nFrames;
+  var spriteDataPose = navi.pose.spriteData[poseName];
+  navi.pose.nFrames = spriteDataPose.nFrames;
   if (navi.pose.frame >= navi.pose.nFrames) navi.pose.frame = 0;
-  if (dataForPose.hasOwnProperty("sizesDirArr")) {
-    navi.pose.size = dataForPose.sizesDirArr[navi.facingDir];
+  if (spriteDataPose.hasOwnProperty("sizesDirArr")) {
+    navi.pose.size = spriteDataPose.sizesDirArr[navi.facingDir];
   } else {
-    navi.pose.size = dataForPose.size;
+    navi.pose.size = spriteDataPose.size;
   }
   updateNaviImage(navi);
   return true;
@@ -1012,20 +1085,44 @@ function setFacingDir(navi, dir) {
   if (dir === navi.facingDir) return "NOOP";
   navi.facingDir = dir;
   navi.pose.heldWithFacingTks = 1;
-  var dataForPose = navi.pose.dataFor[navi.pose.name];
-  if (dataForPose.hasOwnProperty("sizesDirArr")) {
-    navi.pose.size = dataForPose.sizesDirArr[navi.facingDir];
+  var spriteDataPose = navi.pose.spriteData[navi.pose.name];
+  if (spriteDataPose.hasOwnProperty("sizesDirArr")) {
+    navi.pose.size = spriteDataPose.sizesDirArr[navi.facingDir];
   }
   updateNaviImage(navi);
   return true;
+}
+
+function setMinionBackground(minion) {
+  if (!(minion.facingDir & 1)) fullStop("no sprites for cardinal facing mets");
+
+  // TODO: unify minion and navi sprite sheet formats
+  // use a single sprite sheet for each entity
+  var style = minion.div.style;
+  style.backgroundImage = `url("./sprites/met_compact.gif")`;
+  if (minion.pose.name === "stand") {
+    const yVal = 
+      [0, 25, 50, 75][Math.floor(minion.facingDir / 2)];
+    style.backgroundPositionX = "0%";
+    style.backgroundPoisitionY = `${yVal}%`;
+  } else if (minion.pose.name === "walk") {
+    const yVal = 
+      [12.5, 37.5, 62.5, 87.5][Math.floor(minion.facingDir / 2)];
+    style.backgroundImage =`url("./sprites/met_compact.gif")`;
+    style.backgroundPositionX = `${navi.pose.frame * 20}%`;
+    style.backgroundPoisitionY = `${yVal}%`;
+  } else {
+    fullStop("invalid pose name");
+  }
 }
 
 function setNaviBackground(navi) {
   var style = navi.div.style;
   if (navi.pose.name === "stand") {
     style.backgroundImage = `url("./sprites/${navi.name}_stand.gif")`;
-    style.backgroundPositionX = "0%"; // TODO: fix this
+    style.backgroundPositionX = "0%";
   } else if (navi.pose.name === "walk") {
+    // NOTE: this assumes walk cycle is always 6 frames
     style.backgroundImage =
       `url("./sprites/${navi.name}_walk_${navi.facingDir}.gif")`;
     style.backgroundPositionX = `${navi.pose.frame * 20}%`;
@@ -1169,9 +1266,9 @@ function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
   const Rab = [circleB[0] - circleA[0], circleB[1] - circleA[1]];
   
   const radiusSum = aRad + bRad;
-  const A = prodSqrs(Vab[0], Vab[1]);
+  const A = sumSqrs(Vab[0], Vab[1]);
   const B = 2 * (Rab[0] * Vab[0] + Rab[1] * Vab[1]);
-  const C = prodSqrs(Rab[0], Rab[1]) - radiusSum * radiusSum;
+  const C = sumSqrs(Rab[0], Rab[1]) - radiusSum * radiusSum;
   var soln = solveQuadratic(A, B, C);
   if (!soln) return Infinity;
   var [t1, t2] = soln;
@@ -1201,7 +1298,7 @@ var proto = makeNavi("proto", {
     ]
   }
 }, 15, startTileP, false);
-proto.decide.pat = ["F5", "R2", "F3", "L2", "F5", "L2", "F2", "R2"];
+proto.decide.pat = ["F2", "L1", "F3", "L1", "F4", "L1", "F5", "L1"];
 setFacingDir(proto, 3);
 
 var rock = makeNavi("rock", {
@@ -1215,6 +1312,14 @@ var rock = makeNavi("rock", {
 }, 15, startTileR, true);
 rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
 setFacingDir(rock, 7);
+
+const metSpriteData = {
+  "stand": { nFrames: 1, size: [28, 26] };
+  "walk": {
+    nFrames: 6,
+    sizesDirArr: [ [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26] ]
+  }
+}
 
 // END Setup
 
