@@ -104,7 +104,7 @@ function applyTickToNavi(navi) {
       setFacingDir(navi, newDir);
     }
   }
-  if (didChange) updateNaviImage(navi);
+  if (didChange) updateThingImage(navi);
 
   afterTickForThing(navi);
 }
@@ -1069,22 +1069,26 @@ function removeThing(thing) {
   world[kindGroup] = without(world[kindGroup], thing);
 }
 
-function setPose(navi, poseName) {
-  if (navi.pose.name === poseName) return "NOOP";
-  if (!navi.pose.spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
-  navi.pose.name = poseName;
-  navi.pose.frameHeldTks = 1;
-  navi.pose.heldTks = 1;
-  navi.pose.heldWithFacingTks = 1;
-  var spriteDataPose = navi.pose.spriteData[poseName];
-  navi.pose.nFrames = spriteDataPose.nFrames;
-  if (navi.pose.frame >= navi.pose.nFrames) navi.pose.frame = 0;
+function setPose(thing, poseName) {
+  if (thing.pose.name === poseName) return "NOOP";
+  const spriteData = thing.kind === "navi" ? navi.pose.spriteData : metSpriteData;
+  if (!thing.pose.spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
+  thing.pose.name = poseName;
+  thing.pose.frameHeldTks = 1;
+  thing.pose.heldTks = 1;
+  thing.pose.heldWithFacingTks = 1;
+  const spriteDataPose = spriteData[poseName];
+  thing.pose.nFrames = spriteDataPose.nFrames;
+  if (thing.pose.frame >= thing.pose.nFrames) thing.pose.frame = 0;
+  // TODO: eliminate sizesDirArr, one size per pose for all frames and directions
   if (spriteDataPose.hasOwnProperty("sizesDirArr")) {
-    navi.pose.size = spriteDataPose.sizesDirArr[navi.facingDir];
+    thing.pose.size = spriteDataPose.sizesDirArr[thing.facingDir];
   } else {
-    navi.pose.size = spriteDataPose.size;
+    thing.pose.size = spriteDataPose.size;
   }
-  updateNaviImage(navi);
+  thing.div.style.width = thing.pose.size[0];
+  thing.div.style.height = thing.pose.size[1];
+  updateThingImage(thing);
   return true;
 }
 
@@ -1096,7 +1100,7 @@ function setFacingDir(navi, dir) {
   if (spriteDataPose.hasOwnProperty("sizesDirArr")) {
     navi.pose.size = spriteDataPose.sizesDirArr[navi.facingDir];
   }
-  updateNaviImage(navi);
+  updateThingImage(navi);
   return true;
 }
 
@@ -1263,10 +1267,9 @@ function updateAllTileColors() {
   tilesToFlip.forEach(tile => setTileColor(tile, !tile.isBlue));
 }
 
-function updateNaviImage(navi) {
-  navi.div.style.width = navi.pose.size[0];
-  navi.div.style.height = navi.pose.size[1];
-  setNaviBackground(navi);
+function updateThingImage(thing) {
+  if (thing.kind === "navi") return setNaviBackground(thing);
+  return setMinionBackground(thing);
 }
 
 function updateNaviDecides(navi) {
