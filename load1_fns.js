@@ -12,9 +12,9 @@ function sumSqrs(a, b) { return a * a + b * b; }
 // note that makeGridToMap is oneToNine = true by default
 // e.g. every 1/0 becomes a group of 9 tiles or empty spaces
 const zoneMap = `Tile Map
-  1110000000000111
-  1111111111111111
-  1110000000000111`
+1110000000000111
+1111111111111111
+1110000000000111`
 
 // these are in actual tile coordinates AFTER oneToNine
 const fountainStartIjs = [[4, 4], [43, 4]];
@@ -53,12 +53,11 @@ function makeWorld() {
     navis: [],
     crystals: [],
     towers: [],
-    fountains: [null, null],
+    fountains: [],
+    minions: [],
     nextCrystalId: 0,
     tick: 0,
     resonanceFrame: 0,
-    tileMins: [Infinity, Infinity],
-    tileMaxs: [-Infinity, -Infinity],
     cameraNavi: null,
     isCameraNaviManual: false,
   };
@@ -202,8 +201,8 @@ function getVel(a, scaleBy = 1, plusVec = [0, 0]) {
 }
 
 function getWalkHoldFrameFor(navi) {
-  // TODO: check pixel-based walk and run speeds in BNRO
-  return Math.max(Math.round(2.5 * refRunSpeed / navi.speed), 1);
+  const refRunHold = 7;
+  return Math.max(Math.round(refRunHold * refRunSpeed / navi.speed), 1);
 }
 
 function getSurroundTiles(tile, doShowAll = false) {
@@ -414,11 +413,6 @@ function makeTile(i, j, isAir = false) {
   };
   world.tileAt[i] ||= [];
   world.tileAt[i][j] = tile;
-
-  if (i < world.tileMins[0]) world.tileMins[0] = i;
-  if (i > world.tileMaxs[0]) world.tileMaxs[0] = i;
-  if (j < world.tileMins[1]) world.tileMins[1] = j;
-  if (j > world.tileMaxs[1]) world.tileMaxs[1] = j;
   
   world.tiles.push(tile);
 }
@@ -527,30 +521,13 @@ function onTickFountain(fountain) {
 
 function makeFountain(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeFountain");
-  if (world.fountains[isTeamB]) fullStop("reduntant call to makefountain");
-  if (startTile.contents.length) fullStop("occupied startTile to makefountain");
+  if (world.fountains && world.fountains[isTeamB]) fullStop("reduntant call to makefountain");
+  if (startTile.contents.length) {
+    console.log(startTile);
+    fullStop("occupied startTile to makefountain");
+  }
 
-  var fountainDiv = document.createElement('div');
-  fountain.id = `fountain-${isTeamB}`;
-  fountainDiv.className = `fountain team-${isTeamB}`;
-  spriteLayer.appendChild(fountainDiv);
-  var fountain = {
-    kind: "fountain",
-    div: fountainDiv,
-    radius: 0.495,
-    speed: 0,
-    across: 0.5,
-    down: 0.5,
-    facingDir: isTeamB ? 5 : 1,
-    isTeamB: isTeamB,
-    isPermRooted: true,
-  };
-
-  // TODO: DRY repeated logic in methods for creating Things
-
-  startTile.contents.push(fountain);
-  world.fountains[isTeamB] = fountain;
-  return fountain;
+  return makeThingOnTile(startTile, 'fountain', isTeamB);
 }
 
 const SHOT_SPAWN_SEPARATION = 0.1;
@@ -831,46 +808,9 @@ function releaseHoldAbil(navi, slot = 0) {
   beginCooldownAbil(navi, slot);
 }
 
-function makeMinion(startTile, isTeamB, name = "minion") {
+function makeMinion(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeMinion");
-  var minionDiv = document.createElement('div');
-  // TODO: set ID
-  minionDiv.className = name === "minion" ? `minion` : `minion ${name}`;
-  
-  if (name !== "minion") minionDiv.className
-  spriteLayer.appendChild(minionDiv);
-  var minion = {
-    name: name,
-    kind: "minion",
-    div: minionDiv,
-    pose: {
-      name: "stand",
-      frame: 0,
-      frameHeldTks: 1,
-      heldTks: 1,
-      heldWithFacingTks: 1,
-      size: [0, 0], // set by setPose / setFacingDir
-      nFrames: 1, // copy from spriteData when poses changes
-      spriteData: spriteData
-    },
-    radius: 3, // TODO: check actual value
-    speed: 0,
-    across: 0.5,
-    down: 0.5,
-    facingDir: isTeamB ? 5 : 1,
-    onTile: startTile,
-    isTeamB: isTeamB,
-    decide: {
-      code: "S",
-      val: 8,
-      pat: [],
-      idx: 0,
-      until: -1
-    }
-  };
-  startTile.contents.push(minion);
-  world.minions.push(minion);
-  return minion;
+  return makeThingOnTile(startTile, 'minion', isTeamB);
 }
 
 function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
@@ -905,6 +845,7 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
 }
 
 function makeCrystalOnTile(tile) {
+  return; // DEBUG
   var id = world.nextCrystalId;
   world.nextCrystalId++;
 
@@ -1276,7 +1217,7 @@ function tickLoop() {
 
   if (world.tick <= 1) updateCamera();
 
-  world.fountains.filter(x => x).forEach(fountain => onTickFountain(fountain));
+  world.fountains.forEach(fountain => onTickFountain(fountain));
 
   handleCollisions();
 
@@ -1403,25 +1344,38 @@ var proto = makeNavi("proto", {
 proto.decide.pat = ["F2", "L1", "F3", "L1", "F4", "L1", "F5", "L1"];
 setFacingDir(proto, 3);
 
-var rock = makeNavi("rock", {
-  "stand": { nFrames: 1, size: [19, 32] },
-  "walk": {
-    nFrames: 6,
-    sizesDirArr: [
-      [19, 32], [22, 32], [24, 32], [26, 32], [21, 32], [26, 32], [24, 32], [22, 32]
-    ]
-  }
-}, 15, startTileR, true);
-rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
-setFacingDir(rock, 7);
+// var rock = makeNavi("rock", {
+//   "stand": { nFrames: 1, size: [19, 32] },
+//   "walk": {
+//     nFrames: 6,
+//     sizesDirArr: [
+//       [19, 32], [22, 32], [24, 32], [26, 32], [21, 32], [26, 32], [24, 32], [22, 32]
+//     ]
+//   }
+// }, 15, startTileR, true);
+// rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
+// setFacingDir(rock, 7);
+
 
 const metSpriteData = {
-  "stand": { nFrames: 1, size: [28, 26] },
-  "walk": {
-    nFrames: 6,
-    sizesDirArr: [ [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26], [28, 26] ]
-  }
+  "stand": { nFrames: 1, size: [23, 21] },
+  "walk": { nFrames: 6, size: [23,  21], } // 138 x 168
 }
+
+fountainStartIjs.forEach((ij, idx) => {
+
+  console.log("#######");
+  console.log(world.tileAt);
+  console.log(ij);
+  for (var i = 0; i < 5; i++)
+  for (var j = 0; j < 5; j++)
+  console.log(getTileAtIj(i, j))
+  var tile = getTileAtIj(ij[0], ij[1]);
+  console.log(tile);
+  makeFountain(tile, idx);
+});
+
+deployMinion(world.fountains[0]);
 
 // END Setup
 
