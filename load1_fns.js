@@ -533,6 +533,13 @@ function makeFountain(startTile, isTeamB) {
 const SHOT_SPAWN_SEPARATION = 0.1;
 const VALID_KINDS = ['navi', 'tower', 'minion', 'shot', 'fountain'];
 
+const REF_HP_BY_KIND = {
+  minion: 30,
+  navi: 500,
+  tower: 1500,
+  fountain: 2500
+};
+
 function makeThingOnTile(startTile, kind, isTeamB, name = null) {
   if (!VALID_KINDS.includes(kind)) fullStop("invalid kind to makeThingOnTile");
   if (!startTile) fullStop("invalid startTile to makeThingOnTile");
@@ -553,6 +560,10 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
       nFrames: 1, // copy from spriteData when poses changes
       spriteData: null // TODO: fix this...
     },
+    hp: REF_HP_BY_KIND[kind] || 1,
+    hpMax: REF_HP_BY_KIND[kind] || 1,
+    abils: [null, null, null, null],
+    abilCooldowns: [0, 0, 0, 0],
     radius: 0.4,
     speed: 0,
     across: 0.5,
@@ -810,6 +821,7 @@ function releaseHoldAbil(navi, slot = 0) {
 
 function makeMinion(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeMinion");
+  console.log("ran makeMinion")
   return makeThingOnTile(startTile, 'minion', isTeamB);
 }
 
@@ -839,7 +851,7 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
     visitedAt: {}
   }
 
-  naviRun(navi);
+  thingRun(navi);
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
@@ -1013,14 +1025,16 @@ function setThingSpeed(thing) {
   return speed;
 }
 
-function naviRun(navi) {
-  setPose(navi, "walk");
-  navi.speed = refRunSpeed;
+function thingRun(navi) {
+  thing.isRunning = true;
+  setPose(thing, "walk");
+  return setThingSpeed(thing);
 }
 
-function naviStand(navi) {
-  setPose(navi, "stand");
-  navi.speed = 0;
+function thingStand(navi) {
+  thing.isRunning = false;
+  setPose(thing, "stand");
+  return setThingSpeed(thing);
 }
 
 function playPickupSound(navi) {
@@ -1293,11 +1307,11 @@ function updateNaviDecides(navi) {
   if (decide.code === "L" || decide.code === "R") fullStop("L/R follows L/R in navi decides");
   switch (navi.decide.code) {
     case "F":
-      naviRun(navi);
+      thingRun(navi);
       decide.until = world.tick + decide.val / refRunSpeed;
       break;
     case "S":
-      naviStand(navi);
+      thingStand(navi);
       decide.until = world.tick + decide.val * 60;
       break;
   }
