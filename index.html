@@ -66,7 +66,17 @@
         .resonance-6 .crystal { background-position-x: 144px; }
         .resonance-7 .crystal { background-position-x: 168px; }
         #sound-toggle {
-            
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            height: 28px;
+            width: 28px;
+            background-image: url("./sprites/sound_icons.gif");
+            background-position-x: 0px;
+            z-index: 1000000000;
+        }
+        #sound-toggle.sound-off {
+            background-position-x: 28px;
         }
     </style>
     </head>
@@ -82,15 +92,17 @@
         </div>
 
         <div id="camera-layer"> <!-- CSS overflow: hidden blocks content out of view -->
-            <div id="sound-toggle"></div>
              <!-- #world-layer scrolls with camera's in-world movement
                 via style.transform set in JS method updateCamera -->
             <div id="world-layer">
                 <!-- elements which are children of #world-layer will scroll with it,
                     so we should not scroll them or their contents -->
                 <div id="tile-layer"></div>
-                <div id="sprite-layer" class="resonance-0"></div>
+                <div id="sprite-layer" class="resonance-0">
+                </div>
             </div>
+
+            <div id="sound-toggle" class="sound-off" onclick="toggleSound()"></div>
         </div>
     </body>
 

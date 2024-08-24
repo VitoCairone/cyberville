@@ -1025,13 +1025,27 @@ function setThingSpeed(thing) {
   return speed;
 }
 
-function thingRun(navi) {
+function toggleSound() {
+  var toggleEl = document.getElementById('sound-toggle');
+  if (isMuted) {
+    toggleEl.classList.remove('sound-off');
+    isMuted = false;
+    // TODO: stop music and other sounds when muted
+    // if (!isBgMusicOn) playBackgroundMusic();
+  } else {
+    toggleEl.classList.add('sound-off');
+    isMuted = true;
+  }
+  return isMuted;
+}
+
+function thingRun(thing) {
   thing.isRunning = true;
   setPose(thing, "walk");
   return setThingSpeed(thing);
 }
 
-function thingStand(navi) {
+function thingStand(thing) {
   thing.isRunning = false;
   setPose(thing, "stand");
   return setThingSpeed(thing);
@@ -1085,7 +1099,7 @@ function removeThing(thing) {
 
 function setPose(thing, poseName) {
   if (thing.pose.name === poseName) return "NOOP";
-  const spriteData = thing.kind === "navi" ? navi.pose.spriteData : metSpriteData;
+  const spriteData = thing.kind === "navi" ? thing.pose.spriteData : metSpriteData;
   if (!thing.pose.spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
   thing.pose.name = poseName;
   thing.pose.frameHeldTks = 1;
