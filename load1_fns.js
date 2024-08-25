@@ -1030,11 +1030,12 @@ function toggleSound() {
   if (isMuted) {
     toggleEl.classList.remove('sound-off');
     isMuted = false;
-    // TODO: stop music and other sounds when muted
-    // if (!isBgMusicOn) playBackgroundMusic();
+    allSoundEls.forEach(el => el.muted = false);
+    if (!isBgMusicOn) playBackgroundMusic();
   } else {
     toggleEl.classList.add('sound-off');
     isMuted = true;
+    allSoundEls.forEach(el => el.muted = true);
   }
   return isMuted;
 }
@@ -1073,7 +1074,7 @@ function playPickupSound(navi) {
 
 function playBackgroundMusic() {
   if (isMuted) return;
-  big1SoundEl.play().catch((err) => { console.log(err); });
+  bg1SoundEl.play().catch((err) => { console.log(err); });
   isBgMusicOn = true;
 }
 
@@ -1394,10 +1395,6 @@ const metSpriteData = {
 }
 
 fountainStartIjs.forEach((ij, idx) => {
-
-  console.log("#######");
-  console.log(world.tileAt);
-  console.log(ij);
   for (var i = 0; i < 5; i++)
   for (var j = 0; j < 5; j++)
   console.log(getTileAtIj(i, j))

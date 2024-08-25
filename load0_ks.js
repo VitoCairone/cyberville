@@ -12,7 +12,9 @@ const refWalkSpeed = mphToTpt(3.1); // ~ 0.023
 const refRunSpeed = mphToTpt(7.25); // ~ 0.054
 
 const pickupSoundEl = document.getElementById('pickup-audio');
-const big1SoundEl = document.getElementById('bg-1-audio');
+const bg1SoundEl = document.getElementById('bg-1-audio');
+
+const allSoundEls = [ pickupSoundEl, bg1SoundEl ]
 
 const cameraLayer = document.getElementById('camera-layer');
 cameraLayer.style.width = canvSize[0];
