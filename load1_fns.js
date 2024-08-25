@@ -292,7 +292,7 @@ function getTilesForSweep(thing) {
 
 function tileBasedCollisions() {
   var collisions = [];
-  var stills = world.fountains.concat(world.towers);
+  var stills = world.towers; // exclude fountains for now
   var movers = world.navis.concat(world.minions).concat(world.shots);
 
   var allThings = stills.concat(movers).filter(x => x);
@@ -303,20 +303,20 @@ function tileBasedCollisions() {
 
     var tested = {};
     freeSweepTiles.forEach(tile => {
-      if (thingsByTile[tile]) {
-        var priors = thingsByTile[tile].filter(prior => !tested[prior]);
+      if (!tile) return fullStop("tile error in tileBasedCollisions");
+      var tileKey = `${tile.i}_${tile.j}`;
+
+      if (thingsByTile[tileKey]) {
+        var priors = thingsByTile[tileKey].filter(prior => !tested[prior]);
         priors.forEach(prior => {
           tested[prior] = true;
-          if (thing.kind === "shot")
-            if (prior.kind === "shot" || (thing.isMelee && thing.maker === prior))
-              return;
           var collideTk = whenWillThingsCollideTk(thing, prior);
-          if (collideTk <= 0) fullStop(`collideTk=${collideTk}`);
+          // if (collideTk <= 0) fullStop(`collideTk=${collideTk}`);
           if (collideTk <= 1) collisions.push([prior, thing, collideTk]);
         });
-        thingsByTile[tile].push(thing);
+        thingsByTile[tileKey].push(thing);
       }
-      thingsByTile[tile] = [thing];
+      thingsByTile[tileKey] = [thing];
     });
   });
 
@@ -354,20 +354,23 @@ function handleCollisions() {
   // if they are collided into more than once
   // TODO: prevent an object from 'ghost colliding' with a second object
   // if it already bounced off of a third object in the middle
-  if (collisions.length > 1) {
+  if (collisions.length === 1) {
+    console.log("one collision this tick");
+  } else if (collisions.length > 1) {
     collisions.sort((a, b) => a[2] - b[2]); // sort ascending by time
     console.log(`WARN: multiple collisions handled in tick ${world.tick}`);
+    console.log(collisions);
   }
   
   collisions.forEach(coll => {
     var [a, b, timeToCollide] = coll;
 
-    if (timeToCollide === 0) return; // TODO: re-evaluate how this should be handled
+    // if (timeToCollide === 0) return; // TODO: re-evaluate how this should be handled
     // and note that there is already a direct overlap check every tick
 
     // advance to point of impact
-    [a, b].forEach(thing => {
-      // TODO: make moveThing for non-navis!!!
+    // TODO: when time == 0, backtrack to eliminate overlap first
+    if (timeToCollide > 0) [a, b].forEach(thing => {
       if (thing.speed > 0) moveThing(thing, ...getVel(thing, timeToCollide));
     });
 
@@ -383,6 +386,13 @@ function handleCollisions() {
         removeThing(b);
       }
     } else if (b.kind !== 'shot') {
+      if (a.speed && b.speed && a.facingDir === b.facingDir) {
+        var faster = a.speed > b.speed ? a : b;
+        faster.facingDir = (faster.facingDir + 4) % 8;
+        [a, b].forEach(thing => {
+          moveThing(thing, ...getVel(thing, 1 - timeToCollide));
+        });
+      }
       [a, b].forEach(thing => {
         if (thing.speed > 0) {
           thing.facingDir = (thing.facingDir + 4) % 8;
@@ -497,6 +507,8 @@ function getFountainDeployTile(fountain) {
 
 function deployMinion(fountain) {
   var startTile = getFountainDeployTile(fountain);
+  // console.log("minion startTile")
+  // console.log(startTile);
   var minion = makeMinion(startTile, fountain.isTeamB);
   return minion;
 }
@@ -836,7 +848,7 @@ function releaseHoldAbil(navi, slot = 0) {
 
 function makeMinion(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeMinion");
-  console.log("ran makeMinion")
+  // console.log("ran makeMinion")
   return makeThingOnTile(startTile, 'minion', isTeamB, metSpriteData);
 }
 
@@ -966,8 +978,9 @@ function moveThing(thing, across, down) {
   var overlaps = getThingsNaviOverlaps(thing);
   // for now the only cases detected by overlap are crystals, so handle as such
   overlaps.forEach(other => {
-    if (thing.kind === "crystal") return pickupCrystal(thing, other);
-    console.log(`tick=${world.tick} things overlap: ${thing.name || thing.kind} and ${other.name || other.kind}`);
+    if (other.kind === "crystal") return pickupCrystal(thing, other);
+    if (other.kind === "fountain") return;
+    console.log(`tick=${world.tick} after moving, ${thing.name || thing.kind} overlaps ${other.name || other.kind}`);
   });
   [thing.across, thing.down] = [newAcross, newDown].map(x => {
     return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
@@ -1131,8 +1144,8 @@ function setMinionBackground(minion) {
   // TODO: unify minion and navi sprite sheet formats
   // use a single sprite sheet for each entity
 
-  console.log("setMinionBackground")
-  console.log(minion)
+  // console.log("setMinionBackground")
+  // console.log(minion)
 
   var style = minion.div.style;
   if (minion.pose.name === "stand") {
@@ -1145,7 +1158,7 @@ function setMinionBackground(minion) {
     const xVal = -23 * minion.pose.frame; // TODO: percents
     const yVal = 
       -42 * [Math.floor(minion.facingDir / 2)] - 21;
-    console.log([xVal, yVal]);
+    // console.log([xVal, yVal]);
     style.backgroundPositionX = `${xVal}px`;
     style.backgroundPositionY = `${yVal}px`;
   } else {
@@ -1340,7 +1353,9 @@ function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
   const Rab = [circleB[0] - circleA[0], circleB[1] - circleA[1]];
   
   const radiusSum = aRad + bRad;
+  const radSumSqr = radiusSum * radiusSum;
   const A = sumSqrs(Vab[0], Vab[1]);
+  if (A < radSumSqr) return 0;
   const B = 2 * (Rab[0] * Vab[0] + Rab[1] * Vab[1]);
   const C = sumSqrs(Rab[0], Rab[1]) - radiusSum * radiusSum;
   var soln = solveQuadratic(A, B, C);
@@ -1394,10 +1409,7 @@ const metSpriteData = {
 }
 
 fountainStartIjs.forEach((ij, idx) => {
-  for (var i = 0; i < 5; i++)
-  for (var j = 0; j < 5; j++)
-  var tile = getTileAtIj(ij[0], ij[1]);
-  makeFountain(tile, idx);
+  makeFountain(getTileAtIj(ij[0], ij[1]), idx);
 });
 
 deployMinion(world.fountains[0]);
