@@ -13,22 +13,18 @@ function applyTickToThing(thing) {
   if (!thing) fullStop("invalid thing to applyTickToThing");
   if (!thing.pose && !thing.speed) return;
 
-  var didChange = false;
-
   // TODO: consider refactoring these HeldTks to LastTp to reduce updates on every tick
   if (thing.pose && thing.pose !== "unset") {
     thing.pose.frameHeldTks += 1;
     thing.pose.heldTks += 1;
     thing.pose.heldWithFacingTks += 1;
     var nFrames = thing.pose.nFrames;
-    var didChange = false;
     var holdFor = getWalkHoldFrameFor(thing);
     if (nFrames > 1) {
       if (thing.pose.frameHeldTks >
         holdFor) { // TODO: determine from timings and/or speed
         thing.pose.frame = (thing.pose.frame + 1) % nFrames;
         thing.pose.frameHeldTks = 1;
-        didChange = true;
       }
     }
   }
@@ -36,25 +32,25 @@ function applyTickToThing(thing) {
   if (thing.speed) {
     if (thing.speed < 0) fullStop(`thing speed = ${thing.speed}`);
     var didMove = moveThing(thing, ...getVel(thing));
-    if (didMove) {
-      didChange = true;
-    } else {
-      // bonk / bump / wallbonk // wallbump handled here ??
+    if (!didMove) {
+      // bonk / bump / wallbonk / cliff / wallbump handled here
       let newDir;
-      switch (thing.facingDir) {
-        case 0: newDir = thing.across <= 0.5 ? 1 : 7; break;
-        case 1: newDir = 3; break;
-        case 2: newDir = thing.down <= 0.5 ? 3 : 1; break;
-        case 3: newDir = 5; break;
-        case 4: newDir = thing.across >= 0.5 ? 5 : 3; break;
-        case 5: newDir = 7; break;
-        case 6: newDir = thing.down >= 0.5 ? 7 : 5; break;
-        case 7: newDir = 1; break;
+      if (thing.facingDir & 1) {
+        newDir = (thing.facingDir + 2) % 8;
+        setFacingDir(thing, newDir);
+      } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 1) % 8])) {
+        newDir = (thing.facingDir + 1) % 8;
+        setFacingDir(thing, newDir);
+      } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 7) % 8])) {
+        newDir = (thing.facingDir + 7) % 8;
+        setFacingDir(thing, newDir);
+      } else {
+        setPose(thing, "stand");
       }
-      setFacingDir(thing, newDir);
     }
   }
-  if (didChange) updateThingImage(thing);
+  // TODO: avoid updating navi image when pose, frame, and direction are all unchanged
+  updateThingImage(thing);
 
   afterTickForThing(thing);
 }
