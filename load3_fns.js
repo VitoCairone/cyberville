@@ -9,64 +9,6 @@ function pxToMeters(px) { return px * root2 / 28; }
 function isRat(x) { return x >= 0 && x < 1; }
 function sumSqrs(a, b) { return a * a + b * b; }
 
-// note that makeGridToMap is oneToNine = true by default
-// e.g. every 1/0 becomes a group of 9 tiles or empty spaces
-const zoneMap = `Tile Map
-1110000000000111
-1111111111111111
-1110000000000111`
-
-// these are in actual tile coordinates AFTER oneToNine
-const fountainStartIjs = [[4, 4], [43, 4]];
-
-// const zoneMapBNRO1 = `Tile Map
-//   000111001010101010100000
-//   000111111111111111110000
-//   000111010101010101010000
-//   000000000000000000010000
-//   111001110111111111111110
-//   001000100100000000010010
-//   001000110111101110010111
-//   001000100100000010010010
-//   001000110100111010010111
-//   001000100100111010010010
-//   001000110100111010010111
-//   001111100100010010010010
-//   000000110100010010010111
-//   000000100100010010010010
-//   000000101110010010111000
-//   000000111110011111111000
-//   000000001110000000111000
-//   000000000100101010010000
-//   000000001111111111010000
-//   000000000010101010010000
-//   000000000000000000111000
-//   000000000000000000111000
-//   000000000000000000111000`;
-
-// const pickupSound = new Audio('./sounds/pickup.mp3');
-
-function makeWorld() {
-  var world = {
-    tileAt: {},
-    tiles: [],
-    navis: [],
-    crystals: [],
-    towers: [],
-    fountains: [],
-    minions: [],
-    shots: [],
-    nextCrystalId: 0,
-    tick: 0,
-    resonanceFrame: 0,
-    cameraNavi: null,
-    isCameraNaviManual: false,
-  };
-  return world;
-}
-
-var world = makeWorld();
-
 function applyTickToThing(thing) {
   if (!thing) fullStop("invalid thing to applyTickToThing");
   if (!thing.pose && !thing.speed) return;
@@ -98,7 +40,6 @@ function applyTickToThing(thing) {
       didChange = true;
     } else {
       // bonk / bump / wallbonk // wallbump handled here ??
-      if (thing.scoreHist) thing.scoreHist.bonks++;
       let newDir;
       switch (thing.facingDir) {
         case 0: newDir = thing.across <= 0.5 ? 1 : 7; break;
@@ -524,189 +465,6 @@ function meleeSweep(navi, abil) {
   makeShot(navi, abil.range, abil.damage, abil.execution);
 }
 
-const allAbilsByName = {
-  // SlotType 0
-
-  'Sword': {
-    style: 'melee',
-    damage: 30,
-    elem: 'norm',
-    range: 1,
-    windup: 4,
-    execution: 12,
-    slotType: 0
-  },
-  'Blaster': {
-    style: 'shot',
-    damage: 10,
-    elem: 'norm',
-    range: 12,
-    width: 0.1,
-    shotSpeed: 0.5,
-    windup: 4,
-    execution: 4,
-    slotType: 0
-  },
-  'Arrow': {
-    style: 'shot',
-    damage: 25,
-    elem: 'norm',
-    range: 12,
-    width: 0.25,
-    shotSpeed: 0.3,
-    windup: 12,
-    execution: 3,
-    slotType: 0,
-  },
-
-  // SlotType 1
-
-  'Shield': {
-    style: 'self',
-    damage: 0,
-    elem: 'norm',
-    shieldHp: 50,
-    windup: 9,
-    execution: 1,
-    slotType: 1
-  },
-  'Dash': {
-    style: 'dash',
-    damage: 0,
-    elem: 'norm',
-    range: 3,
-    windup: 0,
-    execution: 3 * 3 / refRunSpeed,
-    slotType: 1,
-    // for calibration travel boost last after dash ends
-    selfBoost: { boost: 'travel', amount: 200, duration: 3 * 3 / refRunSpeed }
-  },
-  'Energize': {
-    style: 'self',
-    damage: 0,
-    elem: 'norm',
-    selfBoosts: [
-      {boost: 'rate', amount: 15, duration: 3 * 60},
-      {boost: 'power', amount: 15, duration: 3 * 60},
-    ],
-    windup: 3,
-    execution: 3,
-    slotType: 1
-  },
-  // for calibration, Power Shot is identical to Blaster in every way but
-  // damage and slotType
-  'Power Shot': {
-    style: 'shot',
-    damage: 50,
-    elem: 'norm',
-    range: 12,
-    width: 0.1,
-    shotSpeed: 0.5,
-    windup: 4,
-    execution: 4,
-    slotType: 1
-  },
-  'Freeze': {
-    mayMake: true,
-
-    slotType: 1
-  },
-  'Style Change': {
-    isUnique: true,
-    /* certain unique powers are coded in-places.
-    A navi with Style Change stores up to 3 earned Styles.
-    
-    Tap: Replaces Q, W, E, and R with available Styles.
-
-    Changing to a Style will change the user's Element
-    and all Abilities except Style Change to match
-    the navi the Style was earned from.
-
-    The change has no expiration and is not disruptable.
-    
-    Style Change button is always the user's builtin Style.
-    A new Style is granted on KO (the KOd navi)
-    or on Assist (the ally who earned the KO).
-    Earning a KO or Assist always refreshes Style Changes.
-
-    Re-selecting the currently active Style reduces cooldown to 1 second.
-
-    When 3 earned Styles are held and a new one is earned:
-    * if an earned Style is active, it is protected
-    * the most-used earned Style is protected
-    * The oldest unprotected Style is discarded
-
-    */
-    slotType: 1
-  },
-
-  // SlotType 2
-
-  // for calibration, Ultra shot is identical to Blaster in every way but
-  // damage and slotType
-  'Ultra Shot': {
-    style: 'shot',
-    damage: 300,
-    elem: 'norm',
-    range: 12,
-    width: 0.1,
-    shotSpeed: 0.5,
-    windup: 4,
-    execution: 4,
-    reset: 0,
-    slotType: 2
-  },
-  'Slash Wave': {
-    style: 'broadshot',
-    damage: 150,
-    elem: 'norm',
-    reuse: { times: 1, within: 60 },
-    width: 2.0,
-    divisions: 8,
-    shotSpeed: 0.2,
-    windup: 3,
-    execution: 3,
-    slotType: 2
-  }
-}
-
-/*
-  CHIPS
-  Blast Shot     = Shot + small radius splash
-  Blast Shot 2   = Shot + mid radius splash
-  Blast Shot 3   = Shot + large radius splash
-  Double Strike  = any Attack Special can be recast within 2 second (1 use)
-  Double Shield  = any Shield Special can be recast within 2 seconds of expiration (1 use)
-  Double Empower = any Empower Special can be recast within 2 seconds
-  Double Recover = any Recover Special can be recast within 2 seconds
-  Double Ability = any Ability can be recast within 2 seconds (1 use)
-  Rapid Fire     = Rate +100 for all Ranged Attack abilities for 2 seconds
-  Berserker      = Rate +100 for all Melee Attack abilities for 3 secounds 
-  Double Dash    = any Move Special can be recast within 2 seconds (1 use)
-  Triple Dash    = any Move Special can be recast within 2 seconds (2 uses)
-  Recover 10     = recover 10
-  Recover 30     = recover 30
-  Recover 50     = recover 50
-  Recover 80     = recover 80
-  Recover 120    = recover 120
-  Recover 150    = recover 150
-  Recover 300    = recover 300
-  Barrier        = 1-strike barrier (10 second duration)
-  Mini Bomb      = Toss small Bomb range 3 dealing 0.5 radius area damage
-  Little Bomb    = Toss small Bomb range 3 dealing 1.0 radius area damage
-  Big Bomb       = Toss Bomb range 3 dealing 2.0 radius area damage
-  Grass Field    = self and surround terrain becomes Grass
-  Ice Field      = self and surround terrain becomes Ice
-  Fire Field     = self and surround terrain becomes Fire
-  Metal Field    = self and surround terrain becomes Metal
-  Poison Field   = self and surround terrain becomes Miasma
-  Reset Field    = self and surround terrain becomes Normal
-  Crack Field    = self and surround terrain becomes Cracked; Cracked become Broken
-  Break Field    = self and surround terrain becomes Broken
-*/
-
-Object.keys(allAbilsByName).forEach(name => allAbilsByName[name].name = name);
-
 function getAbilByShot(navi, slot) {
   return allAbilsByName(navi.abils[0])
 }
@@ -731,95 +489,6 @@ function registerHoldAbil(navi, slot = 0) {
 function releaseHoldAbil(navi, slot = 0) {
   fullStop("NYI releaseHoldAbil");
   beginCooldownAbil(navi, slot);
-}
-
-function makeMinion(startTile, isTeamB) {
-  if (!startTile) fullStop("invalid startTile to makeMinion");
-  // console.log("ran makeMinion")
-  return makeThingOnTile(startTile, 'minion', isTeamB, metSpriteData);
-}
-
-function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
-  if (!startTile) fullStop("invalid startTile to makeNavi");
-  var navi = makeThingOnTile(startTile, 'navi', isTeamB, spriteData, name);
-
-  // TODO: fix this...
-  navi.radius = shadowToRadius(shadowLen);
-  navi.pose.spriteData = spriteData;
-
-  navi.decide = {
-    code: "S",
-    val: 8,
-    pat: [],
-    idx: 0,
-    until: -1
-  };
-  navi.mem = {
-    tileVisits: [],
-    tilesSeenHash: {}
-  };
-  navi.scoreHist = {
-    pickups: 0,
-    bonks: 0,
-    revisits: 0,
-    visitedAt: {}
-  }
-
-  if (!world.cameraNavi) world.cameraNavi = navi;
-  return navi;
-}
-
-// function makeCrystalOnTile(tile) {
-//   var id = world.nextCrystalId;
-//   world.nextCrystalId++;
-
-//   var crysDiv = document.createElement('div');
-//   crysDiv.id = `crystal_${id}`;
-//   crysDiv.className = "crystal";
-//   crysDiv.style.width = "24px";
-//   spriteLayer.appendChild(crysDiv);
-
-//   var crystal = {
-//     id: id,
-//     kind: "crystal",
-//     div: crysDiv,
-//     onTile: tile,
-//     across: 0.5,
-//     down: 0.5,
-//     radius: shadowToRadius(18),
-//   };
-
-//   world.crystals.push(crystal);
-//   tile.contents.push(crystal);
-//   updateThingSpritePos(crystal);
-//   return crystal;
-// }
-
-function moveThingToTile(thing, newTile) {
-  thing.onTile.contents = without(thing.onTile.contents, thing);
-  thing.onTile = newTile;
-  thing.onTile.contents.push(thing);
-
-  // if (thing.kind === "navi") {
-  //   const visitedAt = thing.scoreHist.visitedAt;
-  //   const [i, j] = [thing.onTile.i, thing.onTile.j];
-  //   if (i in visitedAt && j in visitedAt[i]) thing.scoreHist.revisits++;
-  //   visitedAt[i] ||= {};
-  //   visitedAt[i][j] = world.tick;
-  
-  //   // TODO: exponentiall falloff records of tileVisits here,
-  //   // keep tilesSeenHash in sync with tileVisits
-  
-  //   if (thing.mem.tilesSeenHash[newTile]) {
-  //     // revisit handling here
-  //     // TODO: prefer to trigger revisit handing BEFORE moving onto the tile
-  //     thing.mem.tilesSeenHash[newTile]++;
-  //   } else {
-  //     thing.mem.tilesSeenHash[newTile] = 1;
-  //   }
-  // }
-
-  return true;
 }
 
 function moveThing(thing, across, down) {
@@ -904,7 +573,7 @@ function updateThingSpeed(thing) {
   // TODO: refactor so speed is being set only here
   // speed should be the actual physics value in tiles/tick
 
-  if (!thing.pose === "walk") {
+  if (!(thing.pose.name === "walk")) {
     thing.speed = 0;
     return 0;
   }
@@ -972,7 +641,6 @@ function playBackgroundMusic() {
 function pickupCrystal(navi, crystal) {
   var tile = crystal.onTile;
   removeThing(crystal);
-  navi.scoreHist.pickups++;
   setTileColor(tile, navi.isTeamB);
   getSurroundTiles(tile).forEach(sTile => setTileColor(sTile, navi.isTeamB));
   playPickupSound(navi);
@@ -1057,7 +725,7 @@ function setNaviBackground(navi) {
   var style = navi.div.style;
   if (navi.pose.name === "stand") {
     style.backgroundImage = `url("./sprites/${navi.name}_stand.gif")`;
-    style.backgroundPositionX = "0%";
+    style.backgroundPositionX = `-${28 * navi.facingDir}px`;
   } else if (navi.pose.name === "walk") {
     // NOTE: this assumes walk cycle is always 6 frames
     style.backgroundImage =
@@ -1189,136 +857,7 @@ function updateThingImage(thing) {
   return setMinionBackground(thing);
 }
 
-function updateNaviDecides(navi) {
-  var decide = navi.decide;
-  if (world.tick < decide.until) return;
-  
-  var newAct = decide.pat[decide.idx];
-  decide.idx = (decide.idx + 1) % decide.pat.length;
-  decide.code = newAct[0];
-  decide.val = parseFloat(newAct.slice(1));
-  if (decide.code === "L" || decide.code === "R") {
-    // for current simplicy setFacingDir orders should drain instantly
-    // can assume L and R will never directly follow, even on wraparound
-    setFacingDir(navi, Math.round(navi.facingDir + 8 + decide.val * (decide.code === "R" ? 1 : -1)) % 8);
-
-    newAct = decide.pat[decide.idx];
-    decide.idx = (decide.idx + 1) % decide.pat.length;
-    decide.code = newAct[0];
-    decide.val = parseFloat(newAct.slice(1));
-  }
-  if (decide.code === "L" || decide.code === "R") fullStop("L/R follows L/R in navi decides");
-  switch (navi.decide.code) {
-    case "F":
-      setPose(navi, "walk");
-      decide.until = world.tick + decide.val / refRunSpeed;
-      break;
-    case "S":
-      setPose(navi, "stand");
-      decide.until = world.tick + decide.val * 60;
-      break;
-  }
-}
-
 // END Functions
-
-// Setup
-
-makeGridFromMap();
-var startTileP = world.tiles[0];
-var startTileR = world.tiles[1];
-var proto = makeNavi("proto", {
-  "stand": { nFrames: 1, size: [28, 37] },
-  "walk": {
-    nFrames: 6,
-    sizesDirArr: [
-      [28, 37], [36, 37], [38, 37], [40, 37], [30, 37], [40, 37], [38, 37], [36, 37]
-    ]
-  }
-}, 15, startTileP, false);
-proto.decide.pat = ["F2", "L1", "F3", "L1", "F4", "L1", "F5", "L1"];
-setFacingDir(proto, 3);
-
-// var rock = makeNavi("rock", {
-//   "stand": { nFrames: 1, size: [19, 32] },
-//   "walk": {
-//     nFrames: 6,
-//     sizesDirArr: [
-//       [19, 32], [22, 32], [24, 32], [26, 32], [21, 32], [26, 32], [24, 32], [22, 32]
-//     ]
-//   }
-// }, 15, startTileR, true);
-// rock.decide.pat = ["F2", "R1", "F3", "R1", "F4", "R1", "F5", "R1"];
-// setFacingDir(rock, 7);
-
-
-const metSpriteData = {
-  "stand": { nFrames: 1, size: [23, 21] }, // TODO: update, this is wrong (probably?)
-  "walk": { nFrames: 6, size: [23, 21], } // 138 x 168
-}
-
-fountainStartIjs.forEach((ij, idx) => {
-  makeFountain(getTileAtIj(ij[0], ij[1]), idx);
-});
-
-deployMinion(world.fountains[0]);
-
-// END Setup
-
-// Keyboard Control
-
-const keyboardDown = {
-  ArrowLeft: false,
-  ArrowUp: false,
-  ArrowRight: false,
-  ArrowDown: false,
-};
-
-function updateNaviDirectionViaKeyboard(navi) {
-  const up = keyboardDown.ArrowUp;
-  const down = keyboardDown.ArrowDown;
-  const left = keyboardDown.ArrowLeft;
-  const right = keyboardDown.ArrowRight;
-
-  if (up && left) setFacingDir(navi, 7);
-  else if (up && right) setFacingDir(navi, 1);
-  else if (down && left) setFacingDir(navi, 5);
-  else if (down && right) setFacingDir(navi, 3);
-  else if (up) setFacingDir(navi, 0);
-  else if (right) setFacingDir(navi, 2);
-  else if (down) setFacingDir(navi, 4);
-  else if (left) setFacingDir(navi, 6);
-}
-
-function updateNaviSpeedViaKeyboard(navi) {
-  navi.speed = Object.values(keyboardDown).some(value => value) ? refRunSpeed : 0;
-}
-
-document.addEventListener('keydown', (event) => {
-  const manualNavi = world.cameraNavi;
-  if (keyboardDown.hasOwnProperty(event.key)) {
-      keyboardDown[event.key] = true;
-      updateNaviDirectionViaKeyboard(manualNavi);
-      updateNaviSpeedViaKeyboard(manualNavi);
-  }
-});
-
-document.addEventListener('keyup', (event) => {
-  const manualNavi = world.cameraNavi;
-  if (keyboardDown.hasOwnProperty(event.key)) {
-      keyboardDown[event.key] = false;
-      updateNaviDirectionViaKeyboard(manualNavi);
-      updateNaviSpeedViaKeyboard(manualNavi);
-  }
-});
-
-// END Keyboard Control
-
-// Create Interval (i.e. Animation Timer)
-
-// var tickIntervalId = window.setInterval(tickLoop, 1000 / 60);
-
-// END Create Interval
 
 // Node Only
 
