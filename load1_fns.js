@@ -540,7 +540,7 @@ const REF_HP_BY_KIND = {
   fountain: 2500
 };
 
-function makeThingOnTile(startTile, kind, isTeamB, name = null) {
+function makeThingOnTile(startTile, kind, isTeamB, spriteData = null, name = null) {
   if (!VALID_KINDS.includes(kind)) fullStop("invalid kind to makeThingOnTile");
   if (!startTile) fullStop("invalid startTile to makeThingOnTile");
   var thingDiv = document.createElement('div');
@@ -550,16 +550,6 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
   var thing = {
     kind: kind,
     div: thingDiv,
-    pose: {
-      name: "stand",
-      frame: 0,
-      frameHeldTks: 1,
-      heldTks: 1,
-      heldWithFacingTks: 1,
-      size: [0, 0], // set by setPose / setFacingDir, TODO: fix to set here!!
-      nFrames: 1, // copy from spriteData when poses changes
-      spriteData: null // TODO: fix this...
-    },
     hp: REF_HP_BY_KIND[kind] || 1,
     hpMax: REF_HP_BY_KIND[kind] || 1,
     abils: [null, null, null, null],
@@ -572,10 +562,26 @@ function makeThingOnTile(startTile, kind, isTeamB, name = null) {
     onTile: startTile,
     isTeamB: isTeamB
   };
+
   if (name) thing.name = name;
 
   startTile.contents.push(thing);
   world[kind + 's'].push(thing);
+
+  // for simplicity set walk pose immediately
+  if (spriteData) {
+    thing.pose = {
+      name: "unset",
+      frame: 0,
+      frameHeldTks: 1,
+      heldTks: 1,
+      heldWithFacingTks: 1,
+      size: undefined,
+      nFrames: undefined,
+      spriteData: spriteData
+    };
+    setPose(thing, "walk");
+  }
 
   return thing;
 }
@@ -827,7 +833,7 @@ function makeMinion(startTile, isTeamB) {
 
 function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeNavi");
-  var navi = makeThingOnTile(startTile, 'navi', isTeamB, name);
+  var navi = makeThingOnTile(startTile, 'navi', isTeamB, spriteData, name);
 
   // TODO: fix this...
   navi.radius = shadowToRadius(shadowLen);
@@ -851,7 +857,6 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
     visitedAt: {}
   }
 
-  thingRun(navi);
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
@@ -992,16 +997,11 @@ function updateThingSpritePos(thing) {
   thing.div.style.zIndex = `${Math.round((ctr[0] + ctr[1]) * 100)}`;
 }
 
-function naviWalk(navi) {
-  setPose(navi, "walk");
-  navi.speed = refWalkSpeed;
-}
-
-function setThingSpeed(thing) {
+function updateThingSpeed(thing) {
   // TODO: refactor so speed is being set only here
   // speed should be the actual physics value in tiles/tick
 
-  if (!thing.isRunning) {
+  if (!thing.pose === "walk") {
     thing.speed = 0;
     return 0;
   }
@@ -1038,18 +1038,6 @@ function toggleSound() {
     allSoundEls.forEach(el => el.muted = true);
   }
   return isMuted;
-}
-
-function thingRun(thing) {
-  thing.isRunning = true;
-  setPose(thing, "walk");
-  return setThingSpeed(thing);
-}
-
-function thingStand(thing) {
-  thing.isRunning = false;
-  setPose(thing, "stand");
-  return setThingSpeed(thing);
 }
 
 function playPickupSound(navi) {
@@ -1101,7 +1089,7 @@ function removeThing(thing) {
 function setPose(thing, poseName) {
   if (thing.pose.name === poseName) return "NOOP";
   const spriteData = thing.kind === "navi" ? thing.pose.spriteData : metSpriteData;
-  if (!thing.pose.spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
+  if (!spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
   thing.pose.name = poseName;
   thing.pose.frameHeldTks = 1;
   thing.pose.heldTks = 1;
@@ -1117,6 +1105,7 @@ function setPose(thing, poseName) {
   }
   thing.div.style.width = thing.pose.size[0];
   thing.div.style.height = thing.pose.size[1];
+  updateThingSpeed(thing);
   updateThingImage(thing);
   return true;
 }
@@ -1138,6 +1127,10 @@ function setMinionBackground(minion) {
 
   // TODO: unify minion and navi sprite sheet formats
   // use a single sprite sheet for each entity
+
+  console.log("setMinionBackground")
+  console.log(minion)
+
   var style = minion.div.style;
   style.backgroundImage = `url("./sprites/met_compact.gif")`;
   if (minion.pose.name === "stand") {
@@ -1322,11 +1315,11 @@ function updateNaviDecides(navi) {
   if (decide.code === "L" || decide.code === "R") fullStop("L/R follows L/R in navi decides");
   switch (navi.decide.code) {
     case "F":
-      thingRun(navi);
+      setPose(navi, "walk");
       decide.until = world.tick + decide.val / refRunSpeed;
       break;
     case "S":
-      thingStand(navi);
+      setPose(navi, "stand");
       decide.until = world.tick + decide.val * 60;
       break;
   }
