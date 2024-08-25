@@ -55,6 +55,7 @@ function makeWorld() {
     towers: [],
     fountains: [],
     minions: [],
+    shots: [],
     nextCrystalId: 0,
     tick: 0,
     resonanceFrame: 0,
@@ -66,47 +67,55 @@ function makeWorld() {
 
 var world = makeWorld();
 
-function applyTickToNavi(navi) {
-  // TODO: consider refactoring these HeldTks to LastTp to reduce updates on every tick
-  navi.pose.frameHeldTks += 1;
-  navi.pose.heldTks += 1;
-  navi.pose.heldWithFacingTks += 1;
-  var nFrames = navi.pose.nFrames;
+function applyTickToThing(thing) {
+  if (!thing) fullStop("invalid thing to applyTickToThing");
+  if (!thing.pose && !thing.speed) return;
+
   var didChange = false;
-  var holdFor = getWalkHoldFrameFor(navi);
-  if (nFrames > 1) {
-    if (navi.pose.frameHeldTks >
-      holdFor) { // TODO: determine from timings and/or speed
-      navi.pose.frame = (navi.pose.frame + 1) % nFrames;
-      navi.pose.frameHeldTks = 1;
-      didChange = true;
+
+  // TODO: consider refactoring these HeldTks to LastTp to reduce updates on every tick
+  if (thing.pose && thing.pose !== "unset") {
+    thing.pose.frameHeldTks += 1;
+    thing.pose.heldTks += 1;
+    thing.pose.heldWithFacingTks += 1;
+    var nFrames = thing.pose.nFrames;
+    var didChange = false;
+    var holdFor = getWalkHoldFrameFor(thing);
+    if (nFrames > 1) {
+      if (thing.pose.frameHeldTks >
+        holdFor) { // TODO: determine from timings and/or speed
+        thing.pose.frame = (thing.pose.frame + 1) % nFrames;
+        thing.pose.frameHeldTks = 1;
+        didChange = true;
+      }
     }
   }
-  if (navi.speed !== 0) {
-    if (navi.speed < 0) fullStop(`navi speed = ${navi.speed}`);
-    var didMove = moveNavi(navi, ...getVel(navi));
+
+  if (thing.speed) {
+    if (thing.speed < 0) fullStop(`thing speed = ${thing.speed}`);
+    var didMove = moveThing(thing, ...getVel(thing));
     if (didMove) {
       didChange = true;
     } else {
-      // bonk / bump / wallbonk // wallbump handled here
-      navi.scoreHist.bonks++;
+      // bonk / bump / wallbonk // wallbump handled here ??
+      if (thing.scoreHist) thing.scoreHist.bonks++;
       let newDir;
-      switch (navi.facingDir) {
-        case 0: newDir = navi.across <= 0.5 ? 1 : 7; break;
+      switch (thing.facingDir) {
+        case 0: newDir = thing.across <= 0.5 ? 1 : 7; break;
         case 1: newDir = 3; break;
-        case 2: newDir = navi.down <= 0.5 ? 3 : 1; break;
+        case 2: newDir = thing.down <= 0.5 ? 3 : 1; break;
         case 3: newDir = 5; break;
-        case 4: newDir = navi.across >= 0.5 ? 5 : 3; break;
+        case 4: newDir = thing.across >= 0.5 ? 5 : 3; break;
         case 5: newDir = 7; break;
-        case 6: newDir = navi.down >= 0.5 ? 7 : 5; break;
+        case 6: newDir = thing.down >= 0.5 ? 7 : 5; break;
         case 7: newDir = 1; break;
       }
-      setFacingDir(navi, newDir);
+      setFacingDir(thing, newDir);
     }
   }
-  if (didChange) updateThingImage(navi);
+  if (didChange) updateThingImage(thing);
 
-  afterTickForThing(navi);
+  afterTickForThing(thing);
 }
 
 const WOOD_REGEN_ON_GRASS = 1;
@@ -233,7 +242,7 @@ function getCenter(thing) {
 function triggerKO(thing) {
   if (thing.name) console.log(`${thing.name} is KOd`);
   if (thing.kind === "navi") {
-    moveNaviToTile(world.fountains[navi.isTeamB]);
+    moveThingToTile(thing, world.fountains[navi.isTeamB]);
     thing.hp = 1;
   } else {
     removeThing(thing);
@@ -433,8 +442,8 @@ function makeGridFromMap(isOneToNine = true) {
         }
       }
   });
-  world.tiles.filter(tile => tile.i % 3 === 1 && tile.j % 3 === 1)
-    .forEach(tile => makeCrystalOnTile(tile));
+  // world.tiles.filter(tile => tile.i % 3 === 1 && tile.j % 3 === 1)
+  //   .forEach(tile => makeCrystalOnTile(tile));
 }
 
 function makeTower(startTile, isTeamB) {
@@ -828,7 +837,7 @@ function releaseHoldAbil(navi, slot = 0) {
 function makeMinion(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeMinion");
   console.log("ran makeMinion")
-  return makeThingOnTile(startTile, 'minion', isTeamB);
+  return makeThingOnTile(startTile, 'minion', isTeamB, metSpriteData);
 }
 
 function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
@@ -861,77 +870,71 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
   return navi;
 }
 
-function makeCrystalOnTile(tile) {
-  return; // DEBUG
-  var id = world.nextCrystalId;
-  world.nextCrystalId++;
+// function makeCrystalOnTile(tile) {
+//   var id = world.nextCrystalId;
+//   world.nextCrystalId++;
 
-  var crysDiv = document.createElement('div');
-  crysDiv.id = `crystal_${id}`;
-  crysDiv.className = "crystal";
-  crysDiv.style.width = "24px";
-  spriteLayer.appendChild(crysDiv);
+//   var crysDiv = document.createElement('div');
+//   crysDiv.id = `crystal_${id}`;
+//   crysDiv.className = "crystal";
+//   crysDiv.style.width = "24px";
+//   spriteLayer.appendChild(crysDiv);
 
-  var crystal = {
-    id: id,
-    kind: "crystal",
-    div: crysDiv,
-    onTile: tile,
-    across: 0.5,
-    down: 0.5,
-    radius: shadowToRadius(18),
-  };
+//   var crystal = {
+//     id: id,
+//     kind: "crystal",
+//     div: crysDiv,
+//     onTile: tile,
+//     across: 0.5,
+//     down: 0.5,
+//     radius: shadowToRadius(18),
+//   };
 
-  world.crystals.push(crystal);
-  tile.contents.push(crystal);
-  updateThingSpritePos(crystal);
-  return crystal;
-}
+//   world.crystals.push(crystal);
+//   tile.contents.push(crystal);
+//   updateThingSpritePos(crystal);
+//   return crystal;
+// }
 
-function moveNaviToTile(navi, newTile) {
-  navi.onTile.contents = without(navi.onTile.contents, navi);
-  navi.onTile = newTile;
-  navi.onTile.contents.push(navi);
+function moveThingToTile(thing, newTile) {
+  thing.onTile.contents = without(thing.onTile.contents, thing);
+  thing.onTile = newTile;
+  thing.onTile.contents.push(thing);
 
-  const visitedAt = navi.scoreHist.visitedAt;
-  const [i, j] = [navi.onTile.i, navi.onTile.j];
-  if (i in visitedAt && j in visitedAt[i]) navi.scoreHist.revisits++;
-  visitedAt[i] ||= {};
-  visitedAt[i][j] = world.tick;
-
-  // TODO: exponentiall falloff records of tileVisits here,
-  // keep tilesSeenHash in sync with tileVisits
-
-  if (navi.mem.tilesSeenHash[newTile]) {
-    // revisit handling here
-    // TODO: prefer to trigger revisit handing BEFORE moving onto the tile
-    navi.mem.tilesSeenHash[newTile]++;
-  } else {
-    navi.mem.tilesSeenHash[newTile] = 1;
-  }
-
+  // if (thing.kind === "navi") {
+  //   const visitedAt = thing.scoreHist.visitedAt;
+  //   const [i, j] = [thing.onTile.i, thing.onTile.j];
+  //   if (i in visitedAt && j in visitedAt[i]) thing.scoreHist.revisits++;
+  //   visitedAt[i] ||= {};
+  //   visitedAt[i][j] = world.tick;
   
+  //   // TODO: exponentiall falloff records of tileVisits here,
+  //   // keep tilesSeenHash in sync with tileVisits
+  
+  //   if (thing.mem.tilesSeenHash[newTile]) {
+  //     // revisit handling here
+  //     // TODO: prefer to trigger revisit handing BEFORE moving onto the tile
+  //     thing.mem.tilesSeenHash[newTile]++;
+  //   } else {
+  //     thing.mem.tilesSeenHash[newTile] = 1;
+  //   }
+  // }
 
   return true;
 }
 
 function moveThing(thing, across, down) {
-  if (thing.kind === "navi") return moveNavi(thing, across, down);
-  fullStop("NYI moveThing");
-}
+  // this method calls moveThingToTile
 
-function moveNavi(navi, across, down) {
-  // this method calls moveNaviToTile
+  if (thing.speed <= 0) fullStop(`moveNavi speed = ${thing.speed}`);
+  if (thing.speed > 1) fullStop("thing speed > 1 tile/tick")
+  if (!isRat(thing.across) || !isRat(thing.down))
+    fullStop(`across, down not valid ratios: ${thing.across}, ${thing.down}`);
 
-  if (navi.speed <= 0) fullStop(`moveNavi speed = ${navi.speed}`);
-  if (navi.speed > 1) fullStop("navi speed > 1 tile/tick")
-  if (!isRat(navi.across) || !isRat(navi.down))
-    fullStop(`across, down not valid ratios: ${navi.across}, ${navi.down}`);
-
-  var radius = Math.min(navi.radius, 0.5);
-  var [newAcross, newDown] = [navi.across + across, navi.down + down];
+  var radius = Math.min(thing.radius, 0.5);
+  var [newAcross, newDown] = [thing.across + across, thing.down + down];
   var signs = [signOrZero(across), signOrZero(down)];
-  if (signs[0] !== shifts[navi.facingDir][0] || signs[1] !== shifts[navi
+  if (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
       .facingDir][1])
     fullStop("movement is not forwards");
   var newFront = [newAcross + radius * signs[0], newDown + radius * signs[1]];
@@ -942,36 +945,36 @@ function moveNavi(navi, across, down) {
   var isFrontSameIj = [isRat(newFront[0]), isRat(newFront[1])];
   var shift = [isFrontSameIj[0] ? 0 : signs[0], isFrontSameIj[1] ? 0 : signs[
     1]];
-  var destTile = getTileAtShift(navi.onTile, shift);
+  var destTile = getTileAtShift(thing.onTile, shift);
 
   if (!destTile) return false;
   // permit corner crossing only if at least one edge adjacent tile exists
   if (shift[0] && shift[1]) {
-    if (!getTileAtShift(navi.onTile, [shift[0], 0]) && !getTileAtShift(navi
+    if (!getTileAtShift(thing.onTile, [shift[0], 0]) && !getTileAtShift(thing
         .onTile, [0, shift[1]]))
       return false;
   }
 
-  // movement is permitted because the FRONT of the navi moves onto a tile;
-  // redo shift for the navi's CENTER to place it on the correct tile
+  // movement is permitted because the FRONT of the thing moves onto a tile;
+  // redo shift for the thing's CENTER to place it on the correct tile
   var isCenterSameIj = [isRat(newAcross), isRat(newDown)];
   shift = [isCenterSameIj[0] ? 0 : signs[0], isCenterSameIj[1] ? 0 : signs[1]];
-  destTile = getTileAtShift(navi.onTile, shift);
-  if (!destTile) throw ("navi center movecheck got invalid tile");
-  moveNaviToTile(navi, destTile);
+  destTile = getTileAtShift(thing.onTile, shift);
+  if (!destTile) throw ("thing center movecheck got invalid tile");
+  moveThingToTile(thing, destTile);
 
-  var overlaps = getThingsNaviOverlaps(navi);
+  var overlaps = getThingsNaviOverlaps(thing);
   // for now the only cases detected by overlap are crystals, so handle as such
-  overlaps.forEach(thing => {
-    if (thing.kind === "crystal") return pickupCrystal(navi, thing);
-    console.log(`tick=${world.tick} navis overlap: ${navi.name} and ${thing.name}`);
+  overlaps.forEach(other => {
+    if (thing.kind === "crystal") return pickupCrystal(thing, other);
+    console.log(`tick=${world.tick} things overlap: ${thing.name || thing.kind} and ${other.name || other.kind}`);
   });
-  [navi.across, navi.down] = [newAcross, newDown].map(x => {
+  [thing.across, thing.down] = [newAcross, newDown].map(x => {
     return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
   });
 
-  if (navi === world.cameraNavi) updateCamera();
-  updateThingSpritePos(navi);
+  if (thing === world.cameraNavi) updateCamera();
+  updateThingSpritePos(thing);
 
   return true;
 }
@@ -1132,18 +1135,19 @@ function setMinionBackground(minion) {
   console.log(minion)
 
   var style = minion.div.style;
-  style.backgroundImage = `url("./sprites/met_compact.gif")`;
   if (minion.pose.name === "stand") {
-    const yVal = 
-      [0, 25, 50, 75][Math.floor(minion.facingDir / 2)];
-    style.backgroundPositionX = "0%";
-    style.backgroundPoisitionY = `${yVal}%`;
+    fullStop("DEBUG minion stand");
+    // const yVal = 
+    //   [0, -25, -50, -75][Math.floor(minion.facingDir / 2)];
+    // style.backgroundPositionX = "0px";
+    // style.backgroundPositionY = `-${yVal}%`;
   } else if (minion.pose.name === "walk") {
+    const xVal = -23 * minion.pose.frame; // TODO: percents
     const yVal = 
-      [12.5, 37.5, 62.5, 87.5][Math.floor(minion.facingDir / 2)];
-    style.backgroundImage =`url("./sprites/met_compact.gif")`;
-    style.backgroundPositionX = `${navi.pose.frame * 20}%`;
-    style.backgroundPoisitionY = `${yVal}%`;
+      -42 * [Math.floor(minion.facingDir / 2)] - 21;
+    console.log([xVal, yVal]);
+    style.backgroundPositionX = `${xVal}px`;
+    style.backgroundPositionY = `${yVal}px`;
   } else {
     fullStop("invalid pose name");
   }
@@ -1246,10 +1250,12 @@ function tickLoop() {
   world.fountains.forEach(fountain => onTickFountain(fountain));
 
   handleCollisions();
-
-  world.navis.forEach(navi => {
-    applyTickToNavi(navi);
-    if (navi !== world.cameraNavi || !world.isCameraNaviManual) updateNaviDecides(navi);
+  
+  var movers = world.navis.concat(world.minions).concat(world.shots);
+  movers.forEach(mover => {
+    applyTickToThing(mover);
+    if (mover.kind === "navi" && (mover !== world.cameraNavi || !world.isCameraNaviManual))
+      updateNaviDecides(mover);
   });
 
   world.tick++;
@@ -1383,16 +1389,14 @@ setFacingDir(proto, 3);
 
 
 const metSpriteData = {
-  "stand": { nFrames: 1, size: [23, 21] },
-  "walk": { nFrames: 6, size: [23,  21], } // 138 x 168
+  "stand": { nFrames: 1, size: [23, 21] }, // TODO: update, this is wrong (probably?)
+  "walk": { nFrames: 6, size: [23, 21], } // 138 x 168
 }
 
 fountainStartIjs.forEach((ij, idx) => {
   for (var i = 0; i < 5; i++)
   for (var j = 0; j < 5; j++)
-  console.log(getTileAtIj(i, j))
   var tile = getTileAtIj(ij[0], ij[1]);
-  console.log(tile);
   makeFountain(tile, idx);
 });
 
