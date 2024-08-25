@@ -1,18 +1,24 @@
 function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
     // method return time units = time units of input velocity denominators
     
-    // Relative velocity
-    const Vab = [Vb[0] - Va[0], Vb[1] - Va[1]];
     // Relative position
     const Rab = [circleB[0] - circleA[0], circleB[1] - circleA[1]];
     
     const radiusSum = aRad + bRad;
     const radSumSqr = radiusSum * radiusSum;
-    const A = sumSqrs(Rab[0], Rab[1]);
-    if (A < radSumSqr) return 0;
+    const ctrDistL2 = sumSqrs(Rab[0], Rab[1]);
+
+    const C = ctrDistL2 - radSumSqr;
+    if (C <= 0) return 0;
+
+    // Relative velocity
+    const Vab = [Vb[0] - Va[0], Vb[1] - Va[1]];
+
+    const A = sumSqrs(Vab[0], Vab[1]);
     const B = 2 * (Rab[0] * Vab[0] + Rab[1] * Vab[1]);
-    const C = sumSqrs(Rab[0], Rab[1]) - radiusSum * radiusSum;
+    
     var soln = solveQuadratic(A, B, C);
+
     if (!soln) return Infinity;
     var [t1, t2] = soln;
     return t1 >= 0 && t2 >= 0 ? Math.min(t1, t2) : t1 >= 0 ? t1 : t2 >= 0 ? t2 :
