@@ -141,16 +141,17 @@ function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
         if (a.speed && b.speed && a.facingDir === b.facingDir) {
           var faster = a.speed > b.speed ? a : b;
           faster.facingDir = (faster.facingDir + 4) % 8;
+          // [a, b].forEach(thing => {
+          //   moveThing(thing, ...getVel(thing, 1 - timeToCollide));
+          // });
+        } else {
           [a, b].forEach(thing => {
-            moveThing(thing, ...getVel(thing, 1 - timeToCollide));
+            if (thing.speed > 0) {
+              thing.facingDir = (thing.facingDir + 4) % 8;
+              // moveThing(thing, ...getVel(thing, 1 - timeToCollide));
+            };
           });
         }
-        [a, b].forEach(thing => {
-          if (thing.speed > 0) {
-            thing.facingDir = (thing.facingDir + 4) % 8;
-            moveThing(thing, ...getVel(thing, 1 - timeToCollide));
-          };
-        });
       }
     });
   }

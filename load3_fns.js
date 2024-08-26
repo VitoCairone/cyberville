@@ -318,7 +318,11 @@ const START_SPAWN_DELAY = 10 * 60;
 
 function getFountainDeployTile(fountain) {
   var fountainTile = fountain.onTile;
-  if (fountainTile.contents.length === 1) return fountainTile;
+  if (fountainTile.contents.length === 1) {
+    // console.log(fountainTile);
+    // world.minions.forEach(m => console.log(m.onTile));
+    return fountainTile;
+  }
   var teamDir = teamDirs[fountain.isTeamB];
   var rots = [0, 1, 7, 2, 6, 3, 5, 4];
   for (var i = 0; i < 8; i++) {
@@ -331,9 +335,8 @@ function getFountainDeployTile(fountain) {
 
 function deployMinion(fountain) {
   var startTile = getFountainDeployTile(fountain);
-  // console.log("minion startTile")
-  // console.log(startTile);
   var minion = makeMinion(startTile, fountain.isTeamB);
+  updateThingSpritePos(minion);
   return minion;
 }
 
@@ -364,17 +367,6 @@ function onTickFountain(fountain) {
   }
 }
 
-function makeFountain(startTile, isTeamB) {
-  if (!startTile) fullStop("invalid startTile to makeFountain");
-  if (world.fountains && world.fountains[isTeamB]) fullStop("reduntant call to makefountain");
-  if (startTile.contents.length) {
-    console.log(startTile);
-    fullStop("occupied startTile to makefountain");
-  }
-
-  return makeThingOnTile(startTile, 'fountain', isTeamB);
-}
-
 const SHOT_SPAWN_SEPARATION = 0.1;
 const VALID_KINDS = ['navi', 'tower', 'minion', 'shot', 'fountain'];
 
@@ -384,6 +376,14 @@ const REF_HP_BY_KIND = {
   tower: 1500,
   fountain: 2500
 };
+
+function moveThingToTile(thing, newTile) {
+  thing.onTile.contents = without(thing.onTile.contents, thing);
+  thing.onTile = newTile;
+  thing.onTile.contents.push(thing);
+
+  return true;
+}
 
 function makeThingOnTile(startTile, kind, isTeamB, spriteData = null, name = null) {
   if (!VALID_KINDS.includes(kind)) fullStop("invalid kind to makeThingOnTile");

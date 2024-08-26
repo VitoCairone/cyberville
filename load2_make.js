@@ -72,10 +72,13 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
 //   return crystal;
 // }
 
-function moveThingToTile(thing, newTile) {
-  thing.onTile.contents = without(thing.onTile.contents, thing);
-  thing.onTile = newTile;
-  thing.onTile.contents.push(thing);
+function makeFountain(startTile, isTeamB) {
+  if (!startTile) fullStop("invalid startTile to makeFountain");
+  if (world.fountains && world.fountains[isTeamB]) fullStop("reduntant call to makefountain");
+  if (startTile.contents.length) {
+    console.log(startTile);
+    fullStop("occupied startTile to makefountain");
+  }
 
-  return true;
+  return makeThingOnTile(startTile, 'fountain', isTeamB);
 }
