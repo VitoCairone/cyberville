@@ -527,13 +527,13 @@ function moveThing(thing, across, down) {
   if (!destTile) throw ("thing center movecheck got invalid tile");
   moveThingToTile(thing, destTile);
 
-  var overlaps = getThingsNaviOverlaps(thing);
-  // for now the only cases detected by overlap are crystals, so handle as such
-  overlaps.forEach(other => {
-    if (other.kind === "crystal") return pickupCrystal(thing, other);
-    if (other.kind === "fountain") return;
-    console.log(`tick=${world.tick} after moving, ${thing.name || thing.kind} overlaps ${other.name || other.kind}`);
-  });
+  // var overlaps = getThingsNaviOverlaps(thing);
+  // // for now the only cases detected by overlap are crystals, so handle as such
+  // overlaps.forEach(other => {
+  //   if (other.kind === "crystal") return pickupCrystal(thing, other);
+  //   if (other.kind === "fountain") return;
+  //   // console.log(`tick=${world.tick} after moving, ${thing.name || thing.kind} overlaps ${other.name || other.kind}`);
+  // });
   [thing.across, thing.down] = [newAcross, newDown].map(x => {
     return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
   });
@@ -677,15 +677,19 @@ function setPose(thing, poseName) {
   return true;
 }
 
-function setFacingDir(navi, dir) {
-  if (dir === navi.facingDir) return "NOOP";
-  navi.facingDir = dir;
-  navi.pose.heldWithFacingTks = 1;
-  var spriteDataPose = navi.pose.spriteData[navi.pose.name];
-  if (spriteDataPose.hasOwnProperty("sizesDirArr")) {
-    navi.pose.size = spriteDataPose.sizesDirArr[navi.facingDir];
+function setFacingDir(thing, dir) {
+  if (dir === thing.facingDir) return "NOOP";
+  thing.facingDir = dir;
+  if (thing.pose) {
+    thing.pose.heldWithFacingTks = 1;
+    var spriteDataPose = thing.pose.spriteData[thing.pose.name];
+    if (spriteDataPose.hasOwnProperty("sizesDirArr")) {
+      thing.pose.size = spriteDataPose.sizesDirArr[thing.facingDir];
+      thing.div.style.width = thing.pose.size[0];
+      thing.div.style.height = thing.pose.size[1];
+    }
+    updateThingImage(thing);
   }
-  updateThingImage(navi);
   return true;
 }
 
@@ -803,9 +807,12 @@ function tickLoop() {
   world.fountains.forEach(fountain => onTickFountain(fountain));
 
   handleCollisions();
-  
+
   var movers = world.navis.concat(world.minions).concat(world.shots);
   movers.forEach(mover => {
+    // TODO: fix this -- everything is moved 1 tick after colliders have already
+    // advanced to the point collision up to 1 tick
+    
     applyTickToThing(mover);
     if (mover.kind === "navi" && (mover !== world.cameraNavi || !world.isCameraNaviManual))
       updateNaviDecides(mover);
