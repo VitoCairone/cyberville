@@ -55,15 +55,6 @@ function applyTickToThing(thing) {
   afterTickForThing(thing);
 }
 
-const WOOD_REGEN_ON_GRASS = 1;
-const FIRE_DOT = 5;
-const FIRE_DOT_DURATION = 20;
-const MIASMA_DOT = 1;
-const MIASMA_DOT_DURATION = 1;
-const ICE_SLOW = 2;
-const ELEC_METAL_HASTE = 1;
-const METAL_SHIELD = 1;
-
 function damageOverTime(thing, amountTotal, duration = 1, elem = 'none') {
   fullStop("NYI damageOverTime");
 }
@@ -106,20 +97,18 @@ function afterTickForThing(thing) {
   }
 }
 
+function getVolumousThings() {
+  return world.towers.concat(world.navis).concat(world.minions);
+}
+
+function getAllThings() {
+  return world.fountains.concat(getVolumousThings()).concat(world.shots);
+}
+
 function isWeakTo(thing, atkElem) {
   if (!thing.kind) fullStop("unkind thing to isWeakTo");
   var thingElem = thing.elem || 'norm';
   return weakMap[thingElem] === atkElem;
-}
-
-function doCirclesOverlap(aCtr, bCtr, aRad, bRad) {
-  var [dx, dy] = [aCtr[0] - bCtr[0], aCtr[1] - bCtr[1]];
-  var radSum = aRad + bRad;
-  return sumSqrs(dx, dy) < radSum * radSum;
-}
-
-function doThingsOverlap(a, b) {  
-  return doCirclesOverlap(getCenter(a), getCenter(b), a.radius, b.radius);
 }
 
 function fullStop(msg = "full stop") {
@@ -147,8 +136,7 @@ function getVel(a, scaleBy = 1, plusVec = [0, 0]) {
 }
 
 function getWalkHoldFrameFor(navi) {
-  const refRunHold = 7;
-  return Math.max(Math.round(refRunHold * refRunSpeed / navi.speed), 1);
+  return Math.max(Math.round(refRunFrameHold * refRunSpeed / navi.speed), 1);
 }
 
 function getSurroundTiles(tile, doShowAll = false) {
@@ -305,11 +293,6 @@ function makeTower(startTile, isTeamB) {
   return tower;
 }
 
-const MINION_TRAIN_STOCK = 5;
-const MINION_TRAIN_INTERVAL = 2 * 60;
-const SPAWN_INTERVAL = 30 * 60;
-const START_SPAWN_DELAY = 10 * 60;
-
 // NOTE the CURRENT USER HERE is train as in a train (noun) of cars
 
 // TODO: consider revising terms so that
@@ -336,8 +319,10 @@ function getFountainDeployTile(fountain) {
 function deployMinion(fountain) {
   var startTile = getFountainDeployTile(fountain);
   var minion = makeMinion(startTile, fountain.isTeamB);
-  updateThingSpritePos(minion);
-  return minion;
+  if (minion) {
+    updateThingSpritePos(minion);
+    return minion;
+  } else return null;
 }
 
 function onTickFountain(fountain) {
@@ -367,94 +352,12 @@ function onTickFountain(fountain) {
   }
 }
 
-const SHOT_SPAWN_SEPARATION = 0.1;
-const VALID_KINDS = ['navi', 'tower', 'minion', 'shot', 'fountain'];
-
-const REF_HP_BY_KIND = {
-  minion: 30,
-  navi: 500,
-  tower: 1500,
-  fountain: 2500
-};
-
 function moveThingToTile(thing, newTile) {
   thing.onTile.contents = without(thing.onTile.contents, thing);
   thing.onTile = newTile;
   thing.onTile.contents.push(thing);
 
   return true;
-}
-
-function makeThingOnTile(startTile, kind, isTeamB, spriteData = null, name = null) {
-  if (!VALID_KINDS.includes(kind)) fullStop("invalid kind to makeThingOnTile");
-  if (!startTile) fullStop("invalid startTile to makeThingOnTile");
-  var thingDiv = document.createElement('div');
-  if (kind === "navi") thingDiv.id = `navi ${name} team-${isTeamB}`;
-  thingDiv.className = name ? `${kind} ${name} team-${isTeamB}` : `${kind} team-${isTeamB}`;
-  spriteLayer.appendChild(thingDiv);
-  var thing = {
-    kind: kind,
-    div: thingDiv,
-    hp: REF_HP_BY_KIND[kind] || 1,
-    hpMax: REF_HP_BY_KIND[kind] || 1,
-    abils: [null, null, null, null],
-    abilCooldowns: [0, 0, 0, 0],
-    radius: 0.4,
-    speed: 0,
-    across: 0.5,
-    down: 0.5,
-    facingDir: isTeamB ? 5 : 1,
-    onTile: startTile,
-    isTeamB: isTeamB
-  };
-
-  if (name) thing.name = name;
-
-  startTile.contents.push(thing);
-  world[kind + 's'].push(thing);
-
-  // for simplicity set walk pose immediately
-  if (spriteData) {
-    thing.pose = {
-      name: "unset",
-      frame: 0,
-      frameHeldTks: 1,
-      heldTks: 1,
-      heldWithFacingTks: 1,
-      size: undefined,
-      nFrames: undefined,
-      spriteData: spriteData
-    };
-    setPose(thing, "walk");
-  }
-
-  return thing;
-}
-
-function makeShot(navi, radius = 0.1, collideDamage = 1, sweepDuration = 0) {
-  var xy = getCenter(navi);
-  var vec = dirToIjVector[navi.facingDir];
-
-  // sweeps (used for melee) are centered on the edge of the navi
-  // while other shots are spawned on non-overlapping points
-  var dist = navi.radius;
-  if (!sweepDuration) dist += radius + SHOT_SPAWN_SEPARATION;
-  xy = [x + vec[0] * dist, y + vec[1] * dist];
-  var tile = getTileAtIj(xy.map(c => Math.floor(c)));
-  
-  var shot = makeThingOnTile(tile, 'shot', navi.isTeamB);
-  shot.facingDir = navi.facingDir;
-  shot.radius = radius;
-  shot.maker = navi;
-  if (sweepDuration) {
-    shot.isMelee = true;
-    shot.speed = navi.speed;
-  } else {
-    // Airsoft pellet realistic ref value is 1.5 tiles/tick
-    // Use slower value for improved visibility for the time being
-    shot.speed = navi.speed + 0.3;
-  }
-  shot.collideDamage = collideDamage;
 }
 
 function meleeSweep(navi, abil) {
@@ -499,8 +402,14 @@ function moveThing(thing, across, down) {
   var [newAcross, newDown] = [thing.across + across, thing.down + down];
   var signs = [signOrZero(across), signOrZero(down)];
   if (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
-      .facingDir][1])
+      .facingDir][1]) {
+    console.log(`thing = ${thing.name || thing.kind}`);
+    console.log(`across, down = ${[across, down]}`);
+    console.log(`signs = ${signs}`);
+    console.log(`facingDir = ${thing.facingDir}`);
+    console.log(`shifts[facingDir] = ${shifts[thing.facingDir]}`);
     fullStop("movement is not forwards");
+  }
   var newFront = [newAcross + radius * signs[0], newDown + radius * signs[1]];
   if (newAcross <= -1 || newAcross >= 2) fullStop(
     "movement across-axis >= 1 tile/tick");
@@ -827,7 +736,6 @@ function tickLoop() {
   }
   
   // todo: have tiles telegraph better for some # of ticks before flipping
-  const flipTks = 120;
   if (world.tick % flipTks === (flipTks - 1)) updateAllTileColors();
 }
 

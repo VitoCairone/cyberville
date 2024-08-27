@@ -24,6 +24,16 @@ function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
   return t1 >= 0 && t2 >= 0 ? Math.min(t1, t2) : t1 >= 0 ? t1 : t2 >= 0 ? t2 :
     Infinity;
 }
+
+function doCirclesOverlap(aCtr, bCtr, aRad, bRad) {
+  var [dx, dy] = [aCtr[0] - bCtr[0], aCtr[1] - bCtr[1]];
+  var radSum = aRad + bRad;
+  return sumSqrs(dx, dy) < radSum * radSum;
+}
+
+function doThingsOverlap(a, b) {  
+  return doCirclesOverlap(getCenter(a), getCenter(b), a.radius, b.radius);
+}
   
 function whenWillThingsCollideTk(a, b) {
   // velocity for a thing is in tiles/tick so this returns ticks
