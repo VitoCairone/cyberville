@@ -105,9 +105,9 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
   spriteLayer.appendChild(thingDiv);
 
   // TODO: use the occupancy map already constructed/updated on every tick
-  // during collision check, to avoid having to compare vs every other thing here
-  var newCtr = [startTile.i + 0.5, startTile.j + 0.5];
-  const mayPlace = getVolumousThings().every(other => {
+  // during tileBasedCollisions() to reduce extra work here
+  const newCtr = [startTile.i + 0.5, startTile.j + 0.5];
+  const mayPlace = !isVolumousKind(kind) || getVolumousThings().every(other => {
     return !doCirclesOverlap(newCtr, getCenter(other), radius, other.radius);
   });
   if (!mayPlace) {

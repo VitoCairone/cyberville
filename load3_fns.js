@@ -353,6 +353,7 @@ function onTickFountain(fountain) {
 }
 
 function moveThingToTile(thing, newTile) {
+  if (thing.onTile === newTile) return false;
   thing.onTile.contents = without(thing.onTile.contents, thing);
   thing.onTile = newTile;
   thing.onTile.contents.push(thing);
@@ -390,15 +391,29 @@ function releaseHoldAbil(navi, slot = 0) {
   beginCooldownAbil(navi, slot);
 }
 
+function isVolumousKind(kind) {
+  return kind === "minion" || kind === "navi" || kind === "tower";
+}
+
+function isMoverKind(kind) {
+  return kind === "minion" || kind === "navi" || kind == "shot";
+}
+
 function moveThing(thing, across, down) {
   // this method calls moveThingToTile
+  if (!isMoverKind(thing.kind)) fullStop(`moveThing invalid kind ${thing.kind}`)
+  if (thing.speed <= 0) fullStop(`moveThing speed = ${thing.speed}`);
 
-  if (thing.speed <= 0) fullStop(`moveNavi speed = ${thing.speed}`);
+  // TODO: check which code (Cliff Facing?) depends on this condition,
+  // since the collision code does not require a speed limit
   if (thing.speed > 1) fullStop("thing speed > 1 tile/tick")
+
   if (!isRat(thing.across) || !isRat(thing.down))
     fullStop(`across, down not valid ratios: ${thing.across}, ${thing.down}`);
 
+  // TODO: check which code (Cliff Facing?) depends on this condition
   var radius = Math.min(thing.radius, 0.5);
+
   var [newAcross, newDown] = [thing.across + across, thing.down + down];
   var signs = [signOrZero(across), signOrZero(down)];
   if (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
@@ -410,11 +425,17 @@ function moveThing(thing, across, down) {
     console.log(`shifts[facingDir] = ${shifts[thing.facingDir]}`);
     fullStop("movement is not forwards");
   }
+
   var newFront = [newAcross + radius * signs[0], newDown + radius * signs[1]];
+
+  // TODO: evaluate where routines would need to be added
+  // to allow for movement across multiple tiles in a tick,
+  // e.g. applying effects of terrain which is crossed over but not the start or end
   if (newAcross <= -1 || newAcross >= 2) fullStop(
     "movement across-axis >= 1 tile/tick");
   if (newDown <= -1 || newDown >= 2) fullStop(
     "movement down-axis >= 1 tile/tick");
+
   var isFrontSameIj = [isRat(newFront[0]), isRat(newFront[1])];
   var shift = [isFrontSameIj[0] ? 0 : signs[0], isFrontSameIj[1] ? 0 : signs[
     1]];
@@ -428,12 +449,12 @@ function moveThing(thing, across, down) {
       return false;
   }
 
-  // movement is permitted because the FRONT of the thing moves onto a tile;
-  // redo shift for the thing's CENTER to place it on the correct tile
+  // movement is permitted because the FRONT of the thing moves onto ground;
+  // now redo shift for the thing's CENTER to place its CENTER on the correct tile
   var isCenterSameIj = [isRat(newAcross), isRat(newDown)];
   shift = [isCenterSameIj[0] ? 0 : signs[0], isCenterSameIj[1] ? 0 : signs[1]];
   destTile = getTileAtShift(thing.onTile, shift);
-  if (!destTile) throw ("thing center movecheck got invalid tile");
+  if (!destTile) return fullStop("CENTER movecheck failed after FRONT check passed");
   moveThingToTile(thing, destTile);
 
   // var overlaps = getThingsNaviOverlaps(thing);
@@ -563,7 +584,7 @@ function removeThing(thing) {
 }
 
 function setPose(thing, poseName) {
-  if (thing.pose.name === poseName) return "NOOP";
+  if (thing.pose.name === poseName) return false;
   const spriteData = thing.kind === "navi" ? thing.pose.spriteData : metSpriteData;
   if (!spriteData.hasOwnProperty(poseName)) fullStop("invalid poseName");
   thing.pose.name = poseName;
@@ -587,7 +608,7 @@ function setPose(thing, poseName) {
 }
 
 function setFacingDir(thing, dir) {
-  if (dir === thing.facingDir) return "NOOP";
+  if (dir === thing.facingDir) return false;
   thing.facingDir = dir;
   if (thing.pose) {
     thing.pose.heldWithFacingTks = 1;
@@ -682,7 +703,7 @@ function setNaviBackground(navi) {
 */
 
 function setTileColor(tile, isToBlue) {
-  if (tile.isBlue === isToBlue) return "NOOP";
+  if (tile.isBlue === isToBlue) return false;
   if (tile.contents.filter(x => x.kind === "navi" && x.isTeamB === !isToBlue).length) return false;
   tile.isBlue = isToBlue;
   tile.div.classList.replace(isToBlue ? "red" : "blue", isToBlue ? "blue" : "red");
