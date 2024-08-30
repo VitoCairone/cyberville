@@ -31,12 +31,28 @@ function applyTickToThing(thing) {
 
   if (thing.speed) {
     if (thing.speed < 0) fullStop(`thing speed = ${thing.speed}`);
+
+    // minion edge following
+    if (thing.kind === "minion" && thing.doTurnRightHere) {
+      var didReachCenter = false
+      switch (thing.facingDir) {
+        case 1: didReachCenter = thing.down <= 0.5; break;
+        case 3: didReachCenter = thing.across >= 0.5; break;
+        case 5: didReachCenter = thing.down >= 0.5; break;
+        case 7: didReachCenter = thing.across <= 0.5; break;
+      }
+      if (didReachCenter) {
+        setFacingDir(thing, (thing.facingDir + 2) % 8);
+        thing.doTurnRightHere = false;
+      }
+    }
+
     var didMove = moveThing(thing, ...getVel(thing));
     if (!didMove) {
       // bonk / bump / wallbonk / cliff / wallbump handled here
       let newDir;
       if (thing.facingDir & 1) {
-        newDir = (thing.facingDir + 2) % 8;
+        newDir = (thing.facingDir + 6) % 8;
         setFacingDir(thing, newDir);
       } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 1) % 8])) {
         newDir = (thing.facingDir + 1) % 8;
@@ -354,9 +370,20 @@ function onTickFountain(fountain) {
 
 function moveThingToTile(thing, newTile) {
   if (thing.onTile === newTile) return false;
+
+  // make minions follow the right edge when in the right line
+  if (thing.kind === "minion") {
+    var dirRt = (thing.facingDir + 2) % 8;
+    if (!getTileAtShift(thing.onTile, shifts[dirRt]) && getTileAtShift(newTile, shifts[dirRt])) {
+      thing.doTurnRightHere = true;
+    }
+  }
+
   thing.onTile.contents = without(thing.onTile.contents, thing);
   thing.onTile = newTile;
   thing.onTile.contents.push(thing);
+
+
 
   return true;
 }

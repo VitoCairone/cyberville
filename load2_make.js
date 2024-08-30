@@ -99,10 +99,6 @@ function makeShot(navi, radius = 0.1, collideDamage = 1, sweepDuration = 0) {
 function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, name = null) {
   if (!VALID_KINDS.includes(kind)) fullStop("invalid kind to makeThingOnTile");
   if (!startTile) fullStop("invalid startTile to makeThingOnTile");
-  var thingDiv = document.createElement('div');
-  if (kind === "navi") thingDiv.id = `navi ${name} team-${isTeamB}`;
-  thingDiv.className = name ? `${kind} ${name} team-${isTeamB}` : `${kind} team-${isTeamB}`;
-  spriteLayer.appendChild(thingDiv);
 
   // TODO: use the occupancy map already constructed/updated on every tick
   // during tileBasedCollisions() to reduce extra work here
@@ -114,6 +110,11 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
     console.log(`WARNING: could not place ${name || kind} on ${[startTile.i, startTile.j]} due to overlap.`)
     return null;
   };
+
+  var thingDiv = document.createElement('div');
+  if (kind === "navi") thingDiv.id = `navi ${name} team-${isTeamB}`;
+  thingDiv.className = name ? `${kind} ${name} team-${isTeamB}` : `${kind} team-${isTeamB}`;
+  spriteLayer.appendChild(thingDiv);
 
   var thing = {
     kind: kind,
