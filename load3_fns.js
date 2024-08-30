@@ -426,14 +426,17 @@ function isMoverKind(kind) {
   return kind === "minion" || kind === "navi" || kind == "shot";
 }
 
-function moveThing(thing, across, down) {
+function moveThing(thing, across, down, doForce = false) {
   // this method calls moveThingToTile
   if (!isMoverKind(thing.kind)) fullStop(`moveThing invalid kind ${thing.kind}`)
-  if (thing.speed <= 0) fullStop(`moveThing speed = ${thing.speed}`);
+
+  // speed is not used in movement calculations in this method
+  // this is just a general sanity assertion
+  if (!doForce && thing.speed <= 0) fullStop(`moveThing speed = ${thing.speed}`);
 
   // TODO: check which code (Cliff Facing?) depends on this condition,
   // since the collision code does not require a speed limit
-  if (thing.speed > 1) fullStop("thing speed > 1 tile/tick")
+  if (!doForce && thing.speed > 1) fullStop("thing speed > 1 tile/tick")
 
   if (!isRat(thing.across) || !isRat(thing.down))
     fullStop(`across, down not valid ratios: ${thing.across}, ${thing.down}`);
@@ -443,13 +446,13 @@ function moveThing(thing, across, down) {
 
   var [newAcross, newDown] = [thing.across + across, thing.down + down];
   var signs = [signOrZero(across), signOrZero(down)];
-  if (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
-      .facingDir][1]) {
-    console.log(`thing = ${thing.name || thing.kind}`);
-    console.log(`across, down = ${[across, down]}`);
-    console.log(`signs = ${signs}`);
-    console.log(`facingDir = ${thing.facingDir}`);
-    console.log(`shifts[facingDir] = ${shifts[thing.facingDir]}`);
+  if (!doForce && (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
+      .facingDir][1])) {
+    // console.log(`thing = ${thing.name || thing.kind}`);
+    // console.log(`across, down = ${[across, down]}`);
+    // console.log(`signs = ${signs}`);
+    // console.log(`facingDir = ${thing.facingDir}`);
+    // console.log(`shifts[facingDir] = ${shifts[thing.facingDir]}`);
     fullStop("movement is not forwards");
   }
 

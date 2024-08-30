@@ -53,19 +53,17 @@ function solveQuadratic(A, B, C) {
 }
 
 function separateOverlappers(a, b) {
-  console.log("called NYI separateOverlappers");
-  // const Rab = [getCenter(a)[0] - getCenter(b)[0], getCenter(a)[1] - getCenter(b)[1]];
-  
-  // // TODO: perform all free movements first and check space
-  // // being moved into to ensure that separated things aren't
-  // // moved onto occupied space
+  const Rab = [getCenter(a)[0] - getCenter(b)[0], getCenter(a)[1] - getCenter(b)[1]];
+  const sepL2 = sumSqrs(Rab[0], Rab[1]);
+  const sepL = Math.sqrt(sepL2);
+  const radSum = a.radius + b.radius;
 
-  // const didMoveA = moveThing(a, Rab[0] / 1.99, Rab[1] / 1.99);
-  // const didMoveB = moveThing(b, Rab[0] / -1.99, Rab[1] / -1.99);
+  const sepUnitVec = Rab.map(val => val / sepL);
+  const missingL = radSum - sepL;
+  var moveVec = sepUnitVec.map(val => val * missingL * 1.01);
 
-  // if (didMoveA && !didMoveB) {
-    
-  // }
+  moveThing(a, moveVec[0] / 2, moveVec[1] / 2, true);
+  moveThing(b, -moveVec[0] / 2, -moveVec[1] / 2, true);
 }
 
 function tileBasedCollisions() {
