@@ -1,16 +1,17 @@
-Roadmap for Simplified MOBA Play
+Next Steps
 
-(1) create Red and Blue Fountains
+(1) create Fountain sprites
 
-(2) create Minions
+(2) create Goal
 
-(3) define Minion movement
+(3) create Goal sprites
 
-(4) create Red and Blue Towers
+(4) create Scoreboard
 
-(5) create Shot as a type of Mover
+(5) create Scoreboard graphics
 
-(6) define Navi and Minion shot creation
+(6) track Score as minions arrive at Goal
 
-(7) define collide behavior for all five classes of thing:
-    Navi, Fountain, Tower, Minion, Shot
+(7) create Victory graphic
+
+(8) modify BNRO1 map for equal minion paths

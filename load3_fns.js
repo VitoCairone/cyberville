@@ -47,7 +47,9 @@ function applyTickToThing(thing) {
       }
     }
 
-    var didMove = moveThing(thing, ...getVel(thing));
+    var didMove = thing.isCollideHalted || moveThing(thing, ...getVel(thing));
+    thing.isCollideHalted = false;
+
     if (!didMove) {
       // bonk / bump / wallbonk / cliff / wallbump handled here
       let newDir;
@@ -65,9 +67,9 @@ function applyTickToThing(thing) {
       }
     }
   }
+
   // TODO: avoid updating navi image when pose, frame, and direction are all unchanged
   updateThingImage(thing);
-
   afterTickForThing(thing);
 }
 

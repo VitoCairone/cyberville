@@ -53,6 +53,8 @@ function solveQuadratic(A, B, C) {
 }
 
 function separateOverlappers(a, b) {
+  if (a.isCollideHalted || b.isCollideHalted) return false;
+
   const Rab = [getCenter(a)[0] - getCenter(b)[0], getCenter(a)[1] - getCenter(b)[1]];
   const sepL2 = sumSqrs(Rab[0], Rab[1]);
   const sepL = Math.sqrt(sepL2);
@@ -121,6 +123,7 @@ function handleCollisions() {
         if (thing.speed > 0) moveThing(thing, ...getVel(thing, timeToCollide * 0.99));
       });
     } else {
+      console.log("WARN: called separateOverlappers in handleCollisions");
       return separateOverlappers(a, b);
     };
 
@@ -153,5 +156,7 @@ function handleCollisions() {
         });
       }
     // }
+
+    [a, b].forEach(thing => thing.isCollideHalted = true);
   });
 }

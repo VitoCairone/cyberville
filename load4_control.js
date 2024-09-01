@@ -40,13 +40,42 @@ const keyboardDown = {
   ArrowUp: false,
   ArrowRight: false,
   ArrowDown: false,
+  q: false, // quick abil
+  w: false, // special abil 1
+  e: false, // special abil 2
+  r: false  // ultimate abil
 };
+
+// TODO: right-click pathing should
+// override and create simulated arrow keys input
+
+function updateNaviAbilsViaKeyboard(navi) {
+  if (!navi.abilTriggers) {
+    navi.abilTriggers = [1, 1, 1, 1].map(x => {
+      return {isDown: false, sinceTk: -1, priorStateHeld: 0};
+    });
+  }
+  ['q', 'w', 'e', 'r'].forEach((key, slot) => {
+    var abilTrigger = navi.abilTriggers[slot];
+    var isDown = keyboardDown[key];
+    if (abilTrigger.isDown != isDown) {
+      abilTrigger.isDown = isDown;
+      abilTrigger.priorStateHeld = (world.tick - abilTrigger.sinceTk - 1);
+      abilTrigger.sinceTk = world.tick;
+    }
+  });
+
+}
 
 function updateNaviDirectionViaKeyboard(navi) {
   const up = keyboardDown.ArrowUp;
   const down = keyboardDown.ArrowDown;
   const left = keyboardDown.ArrowLeft;
   const right = keyboardDown.ArrowRight;
+
+  // TODO: buffer these somewhat so that a manual navi moving grid-aligned
+  // should end up standing facing the same way even if the buttons are not
+  // released on precisely the same tick
 
   if (up && left) setFacingDir(navi, 7);
   else if (up && right) setFacingDir(navi, 1);
@@ -69,6 +98,7 @@ document.addEventListener('keydown', (event) => {
       keyboardDown[event.key] = true;
       updateNaviDirectionViaKeyboard(manualNavi);
       updateNaviSpeedViaKeyboard(manualNavi);
+      updateNaviAbilsViaKeyboard(manualNavi);
   }
 });
 
@@ -78,5 +108,6 @@ document.addEventListener('keyup', (event) => {
       keyboardDown[event.key] = false;
       updateNaviDirectionViaKeyboard(manualNavi);
       updateNaviSpeedViaKeyboard(manualNavi);
+      updateNaviAbilsViaKeyboard(manualNavi);
   }
 });
