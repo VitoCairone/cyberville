@@ -47,7 +47,8 @@ const keyboardDown = {
 };
 
 // TODO: right-click pathing should
-// override and create simulated arrow keys input
+// override and create simulated arrow keys input;
+// assume Driving not supported on Mobile for now
 
 function updateNaviAbilsViaKeyboard(navi) {
   if (!navi.abilTriggers) {
@@ -62,9 +63,17 @@ function updateNaviAbilsViaKeyboard(navi) {
       abilTrigger.isDown = isDown;
       abilTrigger.priorStateHeld = (world.tick - abilTrigger.sinceTk - 1);
       abilTrigger.sinceTk = world.tick;
+
+      if (isDown) {
+        // TODO: queue Delayed, with proper cancel handing,
+        // for registerHold
+      } else {
+        // this is currently no different from binding only to keyup
+        // but will be needed when we also register holds
+        registerTapAbil(world.cameraNavi, slot);
+      }
     }
   });
-
 }
 
 function updateNaviDirectionViaKeyboard(navi) {
@@ -87,8 +96,10 @@ function updateNaviDirectionViaKeyboard(navi) {
   else if (left) setFacingDir(navi, 6);
 }
 
+const ARROW_KEYS = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'];
+
 function updateNaviSpeedViaKeyboard(navi) {
-  setPose(navi, Object.values(keyboardDown).some(value => value) ? "walk" : "stand");
+  setPose(navi, ARROW_KEYS.some(key => keyboardDown[key]) ? "walk" : "stand");
 }
 
 document.addEventListener('keydown', (event) => {

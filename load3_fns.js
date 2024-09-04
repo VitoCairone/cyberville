@@ -394,30 +394,27 @@ function meleeSweep(navi, abil) {
   makeShot(navi, abil.range, abil.damage, abil.execution);
 }
 
-function getAbilByShot(navi, slot) {
-  return allAbilsByName(navi.abils[0])
+function getAbilBySlot(navi, slot) {
+  return allAbilsByName(navi.abils[0]);
 }
 
 function beginCooldownAbil(navi, slot) {
-  var abil = getAbilBySlot(navi, slot);
+  navi.abilCooldowns[slot] = 0.25 * 60;
 }
 
-function beginCooldownAbil(navi, slot) {
-  fullStop("NYI beginCooldownAbil");
-}
-
-function registerTapAbil(navi, slot = 0) {
-  makeShot(navi);
+function registerTapAbil(navi, slot) {
+  console.log("rTA");
+  // const abil = getAbilBySlot(navi, slot);
+  makeShot(world.cameraNavi, 0.1, 5);
   beginCooldownAbil(navi, slot);
 }
 
-function registerHoldAbil(navi, slot = 0) {
-  fullStop("NYI startHoldAbil");
+function registerHoldAbil(navi, slot) {
+fullStop("NYI startHoldAbil");
 }
 
-function releaseHoldAbil(navi, slot = 0) {
-  fullStop("NYI releaseHoldAbil");
-  beginCooldownAbil(navi, slot);
+function releaseHoldAbil(navi, slot) {
+fullStop("NYI releaseHoldAbil");
 }
 
 function isVolumousKind(kind) {
@@ -518,10 +515,12 @@ function updateThingSpritePos(thing) {
   var ctr = getCenter(thing);
   if (!thing || !thing.div) fullStop("invalid thing to updateThingSpritePos");
   var halfWidth = parseInt(thing.div.style.width) / 2;
+  if (!halfWidth) fullStop("thing width not set on div style");
 
   var left = Math.round(14 * (ctr[0] - ctr[1]) - halfWidth);
   var bottom = -7 * (ctr[0] + ctr[1]) - 2.5;
 
+  // if (thing.kind === "shot") console.log(`L, B = ${left}, ${bottom}`);
   thing.div.style.left = `${left}px`;
   thing.div.style.bottom =`${bottom}px`;
   thing.div.style.zIndex = `${Math.round((ctr[0] + ctr[1]) * 100)}`;
@@ -544,7 +543,24 @@ function updateThingSpeed(thing) {
   let speed = refRunSpeed;
 
   thing.effects ||= []; // TODO move this to makeThing
-  travelEffs = thing.effects.filter(eff => eff.effect === "travel");
+  travelEffs = thing.effects.filter(eff => eff.alter === "travel");
+
+  if (thing.kind === "minion") {
+    // TODO: set this on the world and update infrequently
+    var minionTravel;
+    var minsElapsed = Math.floor(world.tick / (30 * 60));
+    if (minsElapsed > 15) {
+      minionTravel = Math.min(minsElapsed - 15, 200);
+    } else if (minsElapsed > 10) {
+      minionTravel = 0;
+    } else if (minsElapsed > 5) {
+      minionTravel = -15 + (minsElapsed - 5) * 3;
+    } else {
+      minionTravel = -15
+    }
+    if (minionTravel) travelEffs.push({alter: "travel" , value: minionTravel});
+  }
+
   if (travelEffs.length) {
     var sum = travelEffs.reduce((sum, eff) => sum + eff.value, 0);
     var mod = sum >= 0 ? ((sum + 100) / 100) : (100 / (100 - sum));
@@ -652,6 +668,12 @@ function setFacingDir(thing, dir) {
     }
     updateThingImage(thing);
   }
+  return true;
+}
+
+function setShotBackground(shot) {
+  // nothing to do yet as the basic shot is static
+  // future shots will have directions and frames
   return true;
 }
 
@@ -817,8 +839,12 @@ function updateAllTileColors() {
 }
 
 function updateThingImage(thing) {
-  if (thing.kind === "navi") return setNaviBackground(thing);
-  return setMinionBackground(thing);
+  switch (thing.kind) {
+    case "navi": return setNaviBackground(thing);
+    case "minion": return setMinionBackground(thing);
+    case "shot": return setShotBackground(thing);
+    default: return fullStop(`no method to set background in updateThingImage`);
+  }
 }
 
 // END Functions

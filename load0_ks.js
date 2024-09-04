@@ -60,5 +60,5 @@ const weakMap = {
 
 const metSpriteData = {
   "stand": { nFrames: 1, size: [23, 21] }, // TODO: update, this is wrong (probably?)
-  "walk": { nFrames: 6, size: [23, 21], } // 138 x 168
+  "walk": { nFrames: 6, size: [23, 21], } // sheet size 138 x 168 px, 6 x 8 slots
 }

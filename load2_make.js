@@ -75,11 +75,13 @@ function makeShot(navi, radius = 0.1, collideDamage = 1, sweepDuration = 0) {
   var vec = dirToIjVector[navi.facingDir];
 
   // sweeps (used for melee) are centered on the edge of the navi
-  // while other shots are spawned on non-overlapping points
+  // while other shots are spawned non-overlapping points
   var dist = navi.radius;
   if (!sweepDuration) dist += radius + SHOT_SPAWN_SEPARATION;
-  xy = [x + vec[0] * dist, y + vec[1] * dist];
-  var tile = getTileAtIj(xy.map(c => Math.floor(c)));
+  xy = [xy[0] + vec[0] * dist, xy[1] + vec[1] * dist];
+
+  var tile = getTileAtIj(Math.floor(xy[0]), Math.floor(xy[1]));
+  console.log([tile.i, tile.j]);
   
   var shot = makeThingOnTile(tile, 'shot', radius, navi.isTeamB);
   shot.facingDir = navi.facingDir;
@@ -94,6 +96,9 @@ function makeShot(navi, radius = 0.1, collideDamage = 1, sweepDuration = 0) {
     shot.speed = navi.speed + 0.3;
   }
   shot.collideDamage = collideDamage;
+
+
+  shot.div.style.width = "7px";
 }
 
 function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, name = null) {

@@ -127,18 +127,24 @@ function handleCollisions() {
       return separateOverlappers(a, b);
     };
 
-    // if (b.kind === 'shot' && a.kind !== 'shot') {
-    //   if (b.isMelee) {
-    //     b.struck ||= [];
-    //     if (!b.struck.includes(a) && a !== b.maker) {
-    //       impartDamage(a, b.collideDamage);
-    //       b.struck.push(a);
-    //     }
-    //   } else {
-    //     impartDamage(a, b.collideDamage);
-    //     removeThing(b);
-    //   }
-    // } else if (b.kind !== 'shot') {
+    if (b.kind === 'shot' && a.kind !== 'shot') {
+      // shot hits non-shot
+      if (b.isMelee) {
+        b.struck ||= [];
+        if (!b.struck.includes(a) && a !== b.maker) {
+          impartDamage(a, b.collideDamage);
+          b.struck.push(a);
+        }
+      } else {
+        if (a.kind === "minion") {
+          removeThing(a);
+        } else {
+          impartDamage(a, b.collideDamage);
+        }
+        removeThing(b);
+      }
+    } else if (b.kind !== 'shot') {
+      // no shot involved
       if (a.speed && b.speed && a.facingDir === b.facingDir) {
         var faster = a.speed > b.speed ? a : b;
         setFacingDir(faster, (faster.facingDir + 4) % 8);
@@ -155,7 +161,7 @@ function handleCollisions() {
           };
         });
       }
-    // }
+    }
 
     [a, b].forEach(thing => thing.isCollideHalted = true);
   });
