@@ -170,7 +170,7 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
 
 function makeFountain(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeFountain");
-  if (world.fountains && world.fountains[isTeamB]) fullStop("reduntant call to makefountain");
+  if (world.fountains && world.fountains[isTeamB ? 1 : 0]) fullStop("reduntant call to makefountain");
   if (startTile.contents.length) {
     console.log(startTile);
     fullStop("occupied startTile to makefountain");

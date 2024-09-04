@@ -378,7 +378,9 @@ function onTickFountain(fountain) {
 }
 
 function score(isTeamB, amount = 1) {
-  world.scores[isTeamB] += amount; 
+  let scoreDiv = document.getElementById(`${isTeamB ? 'blue' : 'red'}-score`);
+  world.scores[isTeamB ? 1 : 0] += amount;
+  scoreDiv.innerHTML = world.scores[isTeamB ? 1 : 0];
 }
 
 function moveThingToTile(thing, newTile) {
