@@ -13,6 +13,7 @@ function makeWorld() {
     resonanceFrame: 0,
     cameraNavi: null,
     isCameraNaviManual: false,
+    scores: [0, 0]
     // TODO: investigate weird behavior of isCameraNaviManual
     // manual control halts proto, even though there is nowhere that sets
     // this value true, and it continues to change directions
@@ -69,6 +70,13 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
 //   updateThingSpritePos(crystal);
 //   return crystal;
 // }
+
+function makeGoal(tile, isTeamB) {
+  if (!tile) fullStop("invalid tile to makeGoal");
+  tile.isGoal = true;
+  tile.isTeamB = isTeamB; // TODO: use method here to ensure proper div update
+  tile.div.classList.add("goal");
+}
 
 function makeShot(navi, radius = 0.1, collideDamage = 1, sweepDuration = 0) {
   var xy = getCenter(navi);
@@ -132,7 +140,7 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
     speed: 0,
     across: 0.5,
     down: 0.5,
-    facingDir: isTeamB ? 5 : 1,
+    facingDir: isTeamB ? 1 : 5,
     onTile: startTile,
     isTeamB: isTeamB
   };

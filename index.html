@@ -36,6 +36,18 @@
         .path-tile.blue {
             background-position-x: 28px;
         }
+        .path-tile.goal {
+            background-image: url("./sprites/goal_tile.gif");
+            background-position-y: 0px;
+        }
+        .resonance-0 .path-tile.goal { background-position-y: 0px; }
+        .resonance-1 .path-tile.goal { background-position-y: -14px; }
+        .resonance-2 .path-tile.goal { background-position-y: -28px; }
+        .resonance-3 .path-tile.goal { background-position-y: -42px; }
+        .resonance-4 .path-tile.goal { background-position-y: -56px; }
+        .resonance-5 .path-tile.goal { background-position-y: -42px; }
+        .resonance-6 .path-tile.goal { background-position-y: -28px; }
+        .resonance-7 .path-tile.goal { background-position-y: -14px; }
         .navi {
             width: 28px;
             height: 37px;
@@ -112,8 +124,8 @@
             <div id="world-layer">
                 <!-- elements which are children of #world-layer will scroll with it,
                     so we should not scroll them or their contents -->
-                <div id="tile-layer"></div>
-                <div id="sprite-layer" class="resonance-0">
+                <div id="tile-layer" class="resonance-0"></div>
+                <div id="sprite-layer">
                 </div>
             </div>
 

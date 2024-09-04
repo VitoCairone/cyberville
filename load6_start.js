@@ -70,6 +70,11 @@ fountainStartIjs.forEach((ij, idx) => {
   makeFountain(getTileAtIj(ij[0], ij[1]), idx);
 });
 
+
+console.log(world.tileAt);
+makeGoal(getTileAtIj(0, 4), false);
+makeGoal(getTileAtIj(47, 4), true);
+
 // deployMinion(world.fountains[0]);
 
 // END Setup

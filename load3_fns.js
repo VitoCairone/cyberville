@@ -50,20 +50,27 @@ function applyTickToThing(thing) {
     var didMove = thing.isCollideHalted || moveThing(thing, ...getVel(thing));
     thing.isCollideHalted = false;
 
+
     if (!didMove) {
       // bonk / bump / wallbonk / cliff / wallbump handled here
-      let newDir;
-      if (thing.facingDir & 1) {
-        newDir = (thing.facingDir + 6) % 8;
-        setFacingDir(thing, newDir);
-      } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 1) % 8])) {
-        newDir = (thing.facingDir + 1) % 8;
-        setFacingDir(thing, newDir);
-      } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 7) % 8])) {
-        newDir = (thing.facingDir + 7) % 8;
-        setFacingDir(thing, newDir);
+      if (thing.kind === "shot") {
+        // TODO: allow shots to fly over empty space
+        removeThing(thing);
+        return;
       } else {
-        setPose(thing, "stand");
+        let newDir;
+        if (thing.facingDir & 1) {
+          newDir = (thing.facingDir + 6) % 8;
+          setFacingDir(thing, newDir);
+        } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 1) % 8])) {
+          newDir = (thing.facingDir + 1) % 8;
+          setFacingDir(thing, newDir);
+        } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 7) % 8])) {
+          newDir = (thing.facingDir + 7) % 8;
+          setFacingDir(thing, newDir);
+        } else {
+          setPose(thing, "stand");
+        }
       }
     }
   }
@@ -370,11 +377,21 @@ function onTickFountain(fountain) {
   }
 }
 
+function score(isTeamB, amount = 1) {
+  world.scores[isTeamB] += amount; 
+}
+
 function moveThingToTile(thing, newTile) {
   if (thing.onTile === newTile) return false;
 
   // make minions follow the right edge when in the right line
   if (thing.kind === "minion") {
+    if (newTile.isGoal) {
+      score(newTile.isTeamB);
+      removeThing(thing);
+      return;
+    }
+
     var dirRt = (thing.facingDir + 2) % 8;
     if (!getTileAtShift(thing.onTile, shifts[dirRt]) && getTileAtShift(newTile, shifts[dirRt])) {
       thing.doTurnRightHere = true;
@@ -485,7 +502,7 @@ function moveThing(thing, across, down, doForce = false) {
   destTile = getTileAtShift(thing.onTile, shift);
   if (!destTile) return fullStop("CENTER movecheck failed after FRONT check passed");
   moveThingToTile(thing, destTile);
-
+  if (thing.isRemoved) return true;
   // var overlaps = getThingsNaviOverlaps(thing);
   // // for now the only cases detected by overlap are crystals, so handle as such
   // overlaps.forEach(other => {
@@ -493,6 +510,7 @@ function moveThing(thing, across, down, doForce = false) {
   //   if (other.kind === "fountain") return;
   //   // console.log(`tick=${world.tick} after moving, ${thing.name || thing.kind} overlaps ${other.name || other.kind}`);
   // });
+
   [thing.across, thing.down] = [newAcross, newDown].map(x => {
     return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
   });
@@ -621,6 +639,7 @@ function pickupCrystal(navi, crystal) {
 }
 
 function removeThing(thing) {
+  thing.isRemoved = true;
   thing.div.remove();
   var tile = thing.onTile;
   tile.contents = without(tile.contents, thing);
@@ -803,9 +822,9 @@ function tickLoop() {
   });
 
   world.tick++;
-  if (world.tick % 6 === 0) {
+  if (world.tick % 10 === 0) {
     var newRF = (world.resonanceFrame + 1) % 8;
-    spriteLayer.classList.replace(`resonance-${world.resonanceFrame}`,
+    tileLayer.classList.replace(`resonance-${world.resonanceFrame}`,
       `resonance-${newRF}`);
     world.resonanceFrame = newRF;
   }
