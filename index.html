@@ -20,6 +20,21 @@
             left: 0px;
             position: absolute;
         }
+        @keyframes slide {
+            from {
+                background-position: 0% 0%
+            }
+            to { 
+                background-position: 200% -100%
+            }
+        }
+        #back-layer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-image: url("./back_single.gif");
+            animation: slide 40s linear infinite;
+        }
         #tile-layer {
             top: 0px;
             left: 0px;
@@ -153,6 +168,7 @@
         <div id="camera-layer"> <!-- CSS overflow: hidden blocks content out of view -->
              <!-- #world-layer scrolls with camera's in-world movement
                 via style.transform set in JS method updateCamera -->
+            <div id="back-layer"></div>
             <div id="world-layer">
                 <!-- elements which are children of #world-layer will scroll with it,
                     so we should not scroll them or their contents -->
