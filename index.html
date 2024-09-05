@@ -51,28 +51,40 @@
         }
         #scoreboard {
             position: relative;
-            background-color: yellow;
+            /* background-color: yellow; */
             width: 90%;
             margin-left: auto;
             margin-right: auto;
             margin-top: 10px;
-            height: 32px;
+            height: 34px;
+            /* border: 1px solid #f7f7f7; */
         }
-        #blue-score {
+        .score-back  {
+            font-family: “Arial Bold”, sans-serif;
             position: absolute;
             width: 15%;
-            height: 28px;
-            background-color: blue;
+            height: 18px;
+            color: #f7f7f7;
+            background-color: #39526b;
+            border: 2px solid #f7ffff;
             left: 10px;
             top: 2px;
+            padding: 4px 4px 4px 4px;
         }
-        #red-score {
-            position: absolute;
-            width: 15%;
-            height: 28px;
+        .score-back.red {
+            left: unset;
             right: 10px;
-            top: 2px;
-            background-color: red;
+        }
+        .score-text {
+            position: absolute;
+            background: linear-gradient(to bottom, #77a7f7, #f7ffff, #77a7f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+        .score-back.red .score-text {
+            right: 4px;
         }
         .path-tile {
             position: absolute;
@@ -178,9 +190,14 @@
             </div>
 
             <div id="hud-layer">
-                <div id="scoreboard">
-                    <div id="blue-score"></div>
-                    <div id="red-score"></div>
+                <div id="scoreboard"><b>
+                    <div class="score-back">
+                        <div class="score-text" id="blue-score">0</div>
+                    </div>
+                    <div class="score-back red">
+                        <div class="score-text" id="red-score">0</div>
+                    </div>
+                </b>
                 </div>
             </div>
             <div id="sound-toggle" class="sound-off" onclick="toggleSound()"></div>
