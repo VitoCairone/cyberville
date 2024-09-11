@@ -1,17 +1,10 @@
 Next Steps
 
-(1) create Fountain sprites
+(1) redo Position so that
+    (A) Things store x, y instead of across, down
+    
+    (B) Tiles and Tile Contents are (re-)collected
+    at the beginning of each the tick as Step 1
 
-(2) create Goal
-
-(3) create Goal sprites
-
-(4) create Scoreboard
-
-(5) create Scoreboard graphics
-
-(6) track Score as minions arrive at Goal
-
-(7) create Victory graphic
-
-(8) modify BNRO1 map for equal minion paths
+    (C) As Step 2, apply Control Change to e.g.
+    change things' facing or trigger ability.

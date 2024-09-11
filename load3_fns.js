@@ -9,6 +9,10 @@ function pxToMeters(px) { return px * root2 / 28; }
 function isRat(x) { return x >= 0 && x < 1; }
 function sumSqrs(a, b) { return a * a + b * b; }
 
+function getAcrossDown(thing) {
+  return [thing.x - Math.floor(thing.x), thing.y - Math.floor(thing.y)];
+}
+
 function applyTickToThing(thing) {
   if (!thing) fullStop("invalid thing to applyTickToThing");
   if (!thing.pose && !thing.speed) return;
@@ -35,11 +39,12 @@ function applyTickToThing(thing) {
     // minion edge following
     if (thing.kind === "minion" && thing.doTurnRightHere) {
       var didReachCenter = false
+      var [across, down] = getAcrossDown(thing)
       switch (thing.facingDir) {
-        case 1: didReachCenter = thing.down <= 0.5; break;
-        case 3: didReachCenter = thing.across >= 0.5; break;
-        case 5: didReachCenter = thing.down >= 0.5; break;
-        case 7: didReachCenter = thing.across <= 0.5; break;
+        case 1: didReachCenter = down <= 0.5; break;
+        case 3: didReachCenter = across >= 0.5; break;
+        case 5: didReachCenter = down >= 0.5; break;
+        case 7: didReachCenter = across <= 0.5; break;
       }
       if (didReachCenter) {
         setFacingDir(thing, (thing.facingDir + 2) % 8);
@@ -171,7 +176,8 @@ function getSurroundTiles(tile, doShowAll = false) {
 }
 
 function getThingsNaviOverlaps(navi) {
-  if (!navi.onTile.contents.length) fullStop("navi tile contents empty");
+  fullStop("NYI getThingsNaviOverlaps");
+  // if (!navi.onTile.contents.length) fullStop("navi tile contents empty");
 
   // note that this method is currently only used for navi-crystal overlaps,
   // as the rest are handled by collision detection, which ignores crystals.
@@ -181,12 +187,12 @@ function getThingsNaviOverlaps(navi) {
   //   getSurroundTiles(navi.onTile).flatMap(tile => tile.contents)
   // );
 
-  var things = navi.onTile.contents;
-  return things.filter(x => x !== navi && doThingsOverlap(navi, x));
+  // var things = navi.onTile.contents;
+  // return things.filter(x => x !== navi && doThingsOverlap(navi, x));
 }
 
 function getCenter(thing) {
-  return [thing.onTile.i + thing.across, thing.onTile.j + thing.down];
+  return [thing.x, thing.y];
 }
 
 function triggerKO(thing) {
@@ -304,8 +310,8 @@ function makeTower(startTile, isTeamB) {
     div: towerDiv,
     radius: 0.495,
     speed: 0,
-    across: 0.5,
-    down: 0.5,
+    x: startTile.i + 0.5,
+    y: startTile.j + 0.5,
     facingDir: isTeamB ? 5 : 1,
     isTeamB: isTeamB,
     isPermRooted: true,
@@ -313,7 +319,7 @@ function makeTower(startTile, isTeamB) {
 
   // TODO: DRY repeated logic in methods for creating Things
 
-  startTile.contents.push(tower);
+  // startTile.contents.push(tower);
   world.towers.push(tower);
   return tower;
 }
@@ -326,17 +332,18 @@ function makeTower(startTile, isTeamB) {
 
 function getFountainDeployTile(fountain) {
   var fountainTile = fountain.onTile;
-  if (fountainTile.contents.length === 1) {
-    // console.log(fountainTile);
-    // world.minions.forEach(m => console.log(m.onTile));
-    return fountainTile;
-  }
+  // if (fountainTile.contents.length === 1) {
+  //   // console.log(fountainTile);
+  //   // world.minions.forEach(m => console.log(m.onTile));
+  //   return fountainTile;
+  // }
   var teamDir = teamDirs[fountain.isTeamB];
   var rots = [0, 1, 7, 2, 6, 3, 5, 4];
   for (var i = 0; i < 8; i++) {
     var dir = (teamDir + rots[i]) % 8;
     var tile = getTileAtShift(fountainTile, shifts[dir]);
-    if (tile.contents.length === 0) return tile;
+    // TODO: implement proper occupancy check here, previously used tile.contents
+    return tile;
   }
   fullStop("No available tile to deploy at fountain");
 }
@@ -400,11 +407,9 @@ function moveThingToTile(thing, newTile) {
     }
   }
 
-  thing.onTile.contents = without(thing.onTile.contents, thing);
+  // thing.onTile.contents = without(thing.onTile.contents, thing);
   thing.onTile = newTile;
-  thing.onTile.contents.push(thing);
-
-
+  // thing.onTile.contents.push(thing);
 
   return true;
 }
@@ -444,7 +449,7 @@ function isMoverKind(kind) {
   return kind === "minion" || kind === "navi" || kind == "shot";
 }
 
-function moveThing(thing, across, down, doForce = false) {
+function moveThing(thing, dx, dy, doForce = false) {
   // this method calls moveThingToTile
   if (!isMoverKind(thing.kind)) fullStop(`moveThing invalid kind ${thing.kind}`)
 
@@ -456,14 +461,12 @@ function moveThing(thing, across, down, doForce = false) {
   // since the collision code does not require a speed limit
   if (!doForce && thing.speed > 1) fullStop("thing speed > 1 tile/tick")
 
-  if (!isRat(thing.across) || !isRat(thing.down))
-    fullStop(`across, down not valid ratios: ${thing.across}, ${thing.down}`);
-
   // TODO: check which code (Cliff Facing?) depends on this condition
   var radius = Math.min(thing.radius, 0.5);
 
-  var [newAcross, newDown] = [thing.across + across, thing.down + down];
-  var signs = [signOrZero(across), signOrZero(down)];
+  var [newX, newY] = [thing.x + dx, thing.y + dy];
+  var [newAcross, newDown] = [newX, newY].map(c => c - Math.floor(c));
+  var signs = [signOrZero(dx), signOrZero(dy)];
   if (!doForce && (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
       .facingDir][1])) {
     // console.log(`thing = ${thing.name || thing.kind}`);
@@ -474,7 +477,7 @@ function moveThing(thing, across, down, doForce = false) {
     fullStop("movement is not forwards");
   }
 
-  var newFront = [newAcross + radius * signs[0], newDown + radius * signs[1]];
+  var newFrontXY = [newX + radius * signs[0], newY + radius * signs[1]];
 
   // TODO: evaluate where routines would need to be added
   // to allow for movement across multiple tiles in a tick,
@@ -484,7 +487,10 @@ function moveThing(thing, across, down, doForce = false) {
   if (newDown <= -1 || newDown >= 2) fullStop(
     "movement down-axis >= 1 tile/tick");
 
-  var isFrontSameIj = [isRat(newFront[0]), isRat(newFront[1])];
+  var isFrontSameIj = [
+    Math.floor(newFrontXY[0]) === Math.floor(thing.x),
+    Math.floor(newFrontXY[1]) === Math.floor(thing.y)
+  ];
   var shift = [isFrontSameIj[0] ? 0 : signs[0], isFrontSameIj[1] ? 0 : signs[
     1]];
   var destTile = getTileAtShift(thing.onTile, shift);
@@ -499,7 +505,10 @@ function moveThing(thing, across, down, doForce = false) {
 
   // movement is permitted because the FRONT of the thing moves onto ground;
   // now redo shift for the thing's CENTER to place its CENTER on the correct tile
-  var isCenterSameIj = [isRat(newAcross), isRat(newDown)];
+  var isCenterSameIj = [
+    Math.floor(newX) === Math.floor(thing.x),
+    Math.floor(newY) === Math.floor(thing.y)
+  ];
   shift = [isCenterSameIj[0] ? 0 : signs[0], isCenterSameIj[1] ? 0 : signs[1]];
   destTile = getTileAtShift(thing.onTile, shift);
   if (!destTile) return fullStop("CENTER movecheck failed after FRONT check passed");
@@ -513,9 +522,8 @@ function moveThing(thing, across, down, doForce = false) {
   //   // console.log(`tick=${world.tick} after moving, ${thing.name || thing.kind} overlaps ${other.name || other.kind}`);
   // });
 
-  [thing.across, thing.down] = [newAcross, newDown].map(x => {
-    return x < 0 ? x + 1 : (x < 1 ? x : x - 1);
-  });
+  thing.x = newX;
+  thing.y = newY;
 
   if (thing === world.cameraNavi) updateCamera();
   updateThingSpritePos(thing);
@@ -644,10 +652,10 @@ function removeThing(thing) {
   thing.isRemoved = true;
   thing.div.remove();
   var tile = thing.onTile;
-  tile.contents = without(tile.contents, thing);
+  // tile.contents = without(tile.contents, thing);
   // TODO: collect a list of empty air tiles and remove those
   // which are not needed at the end, to avoid removing tiles still in use
-  if (tile.isAir && tile.contents.length === 0) removeTile(tile);
+  // if (tile.isAir && tile.contents.length === 0) removeTile(tile);
   var kindGroup = thing.kind + 's';
   world[kindGroup] = without(world[kindGroup], thing);
 }
@@ -779,7 +787,7 @@ function setNaviBackground(navi) {
 
 function setTileColor(tile, isToBlue) {
   if (tile.isBlue === isToBlue) return false;
-  if (tile.contents.filter(x => x.kind === "navi" && x.isTeamB === !isToBlue).length) return false;
+  // if (tile.contents.filter(x => x.kind === "navi" && x.isTeamB === !isToBlue).length) return false;
   tile.isBlue = isToBlue;
   tile.div.classList.replace(isToBlue ? "red" : "blue", isToBlue ? "blue" : "red");
   return true;

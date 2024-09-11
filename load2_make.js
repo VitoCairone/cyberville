@@ -60,8 +60,6 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
 //     kind: "crystal",
 //     div: crysDiv,
 //     onTile: tile,
-//     across: 0.5,
-//     down: 0.5,
 //     radius: shadowToRadius(18),
 //   };
 
@@ -138,8 +136,8 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
     abilCooldowns: [0, 0, 0, 0],
     radius: radius,
     speed: 0,
-    across: 0.5,
-    down: 0.5,
+    x: startTile.i + 0.5,
+    y: startTile.j + 0.5,
     facingDir: isTeamB ? 1 : 5,
     onTile: startTile,
     isTeamB: isTeamB
@@ -147,7 +145,7 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
 
   if (name) thing.name = name;
 
-  startTile.contents.push(thing);
+  // startTile.contents.push(thing);
   world[kind + 's'].push(thing);
 
   // for simplicity set walk pose immediately
@@ -171,10 +169,10 @@ function makeThingOnTile(startTile, kind, radius, isTeamB, spriteData = null, na
 function makeFountain(startTile, isTeamB) {
   if (!startTile) fullStop("invalid startTile to makeFountain");
   if (world.fountains && world.fountains[isTeamB ? 1 : 0]) fullStop("reduntant call to makefountain");
-  if (startTile.contents.length) {
-    console.log(startTile);
-    fullStop("occupied startTile to makefountain");
-  }
+  // if (startTile.contents.length) {
+  //   console.log(startTile);
+  //   fullStop("occupied startTile to makefountain");
+  // }
 
   return makeThingOnTile(startTile, 'fountain', 0.495, isTeamB);
 }
