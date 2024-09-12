@@ -198,7 +198,7 @@ function getCenter(thing) {
 function triggerKO(thing) {
   if (thing.name) console.log(`${thing.name} is KOd`);
   if (thing.kind === "navi") {
-    moveThingToTile(thing, world.fountains[navi.isTeamB]);
+    // TODO: move thing to fountain
     thing.hp = 1;
   } else {
     removeThing(thing);
@@ -209,41 +209,6 @@ function impartDamage(thing, amount) {
   if (!thing || !thing.hp || !amount || amount < 0) return;
   thing.hp -= amount;
   if (thing.hp < 0) triggerKO(thing);
-}
-
-function getTilesForSweep(thing) {
-  if (thing.kind === "fountain" || thing.kind === "tower")
-    return [thing.onTile];
-
-  const tiles = [];
-  const [cx, cy] = getCenter(thing);
-  const rad = thing.radius;
-
-  let [xLo, yLo, xHi, yHi] = [cx - rad, cy - rad, cx + rad, cy + rad];
-
-  if (thing.speed) {
-    const [vx, vy] = getVel(thing);
-
-    const endXLo = xLo + vx;
-    const endYLo = yLo + vy;
-    const endXHi = xHi + vx;
-    const endYHi = yHi + vy;
-
-    xLo = Math.min(xLo, endXLo);
-    yLo = Math.min(yLo, endYLo);
-    xHi = Math.max(xHi, endXHi);
-    yHi = Math.max(yHi, endYHi);
-  }
-
-  let [iLo, jLo, iHi, jHi] = [xLo, yLo, xHi, yHi].map(val => Math.floor(val));
-
-  if (iLo === iHi && jLo === jHi) return [thing.onTile];
-
-  for (let i = iLo; i <= iHi; i++)
-    for (let j = jLo; j <= jHi; j++)
-      tiles.push(getTileAtIj(i, j));
-
-  return tiles.filter(x => x);
 }
 
 function isTileNeutralPat(tile) {
@@ -298,37 +263,6 @@ function makeGridFromMap(isOneToNine = true) {
   // world.tiles.filter(tile => tile.i % 3 === 1 && tile.j % 3 === 1)
   //   .forEach(tile => makeCrystalOnTile(tile));
 }
-
-function makeTower(startTile, isTeamB) {
-  if (!startTile) fullStop("invalid startTile to makeTower");
-  var towerDiv = document.createElement('div');
-  // TODO: set id
-  towerDiv.className = `tower`;
-  spriteLayer.appendChild(towerDiv);
-  var tower = {
-    kind: "tower",
-    div: towerDiv,
-    radius: 0.495,
-    speed: 0,
-    x: startTile.i + 0.5,
-    y: startTile.j + 0.5,
-    facingDir: isTeamB ? 5 : 1,
-    isTeamB: isTeamB,
-    isPermRooted: true,
-  };
-
-  // TODO: DRY repeated logic in methods for creating Things
-
-  // startTile.contents.push(tower);
-  world.towers.push(tower);
-  return tower;
-}
-
-// NOTE the CURRENT USER HERE is train as in a train (noun) of cars
-
-// TODO: consider revising terms so that
-// 'train' means preparing a unit (long timer)
-// and 'deploy' means sending out a unit (short timer)
 
 function getFountainDeployTile(fountain) {
   var fountainTile = fountain.onTile;
@@ -390,15 +324,15 @@ function score(isTeamB, amount = 1) {
   scoreDiv.innerHTML = world.scores[isTeamB ? 1 : 0];
 }
 
-function moveThingToTile(thing, newTile) {
-  if (thing.onTile === newTile) return false;
-
-  // make minions follow the right edge when in the right line
+// returns true if movement should occur and false if it should not
+function onTileMove(thing, dx, dy) {
   if (thing.kind === "minion") {
+    const newTile = getTileAtIj(Math.floor(thing.x + dx), Math.floor(thing.y + dy));
+
     if (newTile.isGoal) {
       score(newTile.isTeamB);
       removeThing(thing);
-      return;
+      return false;
     }
 
     var dirRt = (thing.facingDir + 2) % 8;
@@ -406,10 +340,6 @@ function moveThingToTile(thing, newTile) {
       thing.doTurnRightHere = true;
     }
   }
-
-  // thing.onTile.contents = without(thing.onTile.contents, thing);
-  thing.onTile = newTile;
-  // thing.onTile.contents.push(thing);
 
   return true;
 }
@@ -449,81 +379,44 @@ function isMoverKind(kind) {
   return kind === "minion" || kind === "navi" || kind == "shot";
 }
 
-function moveThing(thing, dx, dy, doForce = false) {
-  // this method calls moveThingToTile
+function areArraysEq(a, b) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  if (a.length === 0) return true;
+  return a.every((x, ind) => x === b[ind]);
+}
+
+function onCliffLimited(thing) {
+  return;
+}
+
+function iujToIj(iuj) {
+  return iuj.split('_').map(val => parseInt(val));
+}
+
+function moveThing(thing, dx, dy) {
   if (!isMoverKind(thing.kind)) fullStop(`moveThing invalid kind ${thing.kind}`)
+  if (dx == 0 && dy == 0) return false;
 
-  // speed is not used in movement calculations in this method
-  // this is just a general sanity assertion
-  if (!doForce && thing.speed <= 0) fullStop(`moveThing speed = ${thing.speed}`);
+  const startIUJs = getPlantedIUJs(thing);
+  const endIUJs = getPlantedIUJs(thing, dx, dy);
 
-  // TODO: check which code (Cliff Facing?) depends on this condition,
-  // since the collision code does not require a speed limit
-  if (!doForce && thing.speed > 1) fullStop("thing speed > 1 tile/tick")
-
-  // TODO: check which code (Cliff Facing?) depends on this condition
-  var radius = Math.min(thing.radius, 0.5);
-
-  var [newX, newY] = [thing.x + dx, thing.y + dy];
-  var [newAcross, newDown] = [newX, newY].map(c => c - Math.floor(c));
-  var signs = [signOrZero(dx), signOrZero(dy)];
-  if (!doForce && (signs[0] !== shifts[thing.facingDir][0] || signs[1] !== shifts[thing
-      .facingDir][1])) {
-    // console.log(`thing = ${thing.name || thing.kind}`);
-    // console.log(`across, down = ${[across, down]}`);
-    // console.log(`signs = ${signs}`);
-    // console.log(`facingDir = ${thing.facingDir}`);
-    // console.log(`shifts[facingDir] = ${shifts[thing.facingDir]}`);
-    fullStop("movement is not forwards");
+  const areIUJsDiff = !areArraysEq(startIUJs, endIUJs)
+  if (areIUJsDiff && !endIUJs.every(iuj => getTileAtIj(...iujToIj(iuj)))) {
+    thing.isCliffLimited = true;
+    onCliffLimited(thing);
+    return false;
   }
+  thing.isCliffLimited = false;
 
-  var newFrontXY = [newX + radius * signs[0], newY + radius * signs[1]];
+  const isTileMove = Math.floor(thing.x) !== Math.floor(thing.x + dx)
+    || Math.floor(thing.y) !== Math.floor(thing.y + dy);
 
-  // TODO: evaluate where routines would need to be added
-  // to allow for movement across multiple tiles in a tick,
-  // e.g. applying effects of terrain which is crossed over but not the start or end
-  if (newAcross <= -1 || newAcross >= 2) fullStop(
-    "movement across-axis >= 1 tile/tick");
-  if (newDown <= -1 || newDown >= 2) fullStop(
-    "movement down-axis >= 1 tile/tick");
+  // onTileMove runs side effects and returns false if halting
+  if (isTileMove && !onTileMove(thing, dx, dy)) return false;
 
-  var isFrontSameIj = [
-    Math.floor(newFrontXY[0]) === Math.floor(thing.x),
-    Math.floor(newFrontXY[1]) === Math.floor(thing.y)
-  ];
-  var shift = [isFrontSameIj[0] ? 0 : signs[0], isFrontSameIj[1] ? 0 : signs[
-    1]];
-  var destTile = getTileAtShift(thing.onTile, shift);
-
-  if (!destTile) return false;
-  // permit corner crossing only if at least one edge adjacent tile exists
-  if (shift[0] && shift[1]) {
-    if (!getTileAtShift(thing.onTile, [shift[0], 0]) && !getTileAtShift(thing
-        .onTile, [0, shift[1]]))
-      return false;
-  }
-
-  // movement is permitted because the FRONT of the thing moves onto ground;
-  // now redo shift for the thing's CENTER to place its CENTER on the correct tile
-  var isCenterSameIj = [
-    Math.floor(newX) === Math.floor(thing.x),
-    Math.floor(newY) === Math.floor(thing.y)
-  ];
-  shift = [isCenterSameIj[0] ? 0 : signs[0], isCenterSameIj[1] ? 0 : signs[1]];
-  destTile = getTileAtShift(thing.onTile, shift);
-  if (!destTile) return fullStop("CENTER movecheck failed after FRONT check passed");
-  moveThingToTile(thing, destTile);
-  if (thing.isRemoved) return true;
-  // var overlaps = getThingsNaviOverlaps(thing);
-  // // for now the only cases detected by overlap are crystals, so handle as such
-  // overlaps.forEach(other => {
-  //   if (other.kind === "crystal") return pickupCrystal(thing, other);
-  //   if (other.kind === "fountain") return;
-  //   // console.log(`tick=${world.tick} after moving, ${thing.name || thing.kind} overlaps ${other.name || other.kind}`);
-  // });
-
-  thing.x = newX;
-  thing.y = newY;
+  thing.x += dx;
+  thing.y += dy;
 
   if (thing === world.cameraNavi) updateCamera();
   updateThingSpritePos(thing);

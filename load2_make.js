@@ -13,7 +13,8 @@ function makeWorld() {
     resonanceFrame: 0,
     cameraNavi: null,
     isCameraNaviManual: false,
-    scores: [0, 0]
+    scores: [0, 0],
+    occupantsByIUJ: {}
     // TODO: investigate weird behavior of isCameraNaviManual
     // manual control halts proto, even though there is nowhere that sets
     // this value true, and it continues to change directions
@@ -44,30 +45,6 @@ function makeNavi(name, spriteData, shadowLen, startTile, isTeamB) {
   if (!world.cameraNavi) world.cameraNavi = navi;
   return navi;
 }
-
-// function makeCrystalOnTile(tile) {
-//   var id = world.nextCrystalId;
-//   world.nextCrystalId++;
-
-//   var crysDiv = document.createElement('div');
-//   crysDiv.id = `crystal_${id}`;
-//   crysDiv.className = "crystal";
-//   crysDiv.style.width = "24px";
-//   spriteLayer.appendChild(crysDiv);
-
-//   var crystal = {
-//     id: id,
-//     kind: "crystal",
-//     div: crysDiv,
-//     onTile: tile,
-//     radius: shadowToRadius(18),
-//   };
-
-//   world.crystals.push(crystal);
-//   tile.contents.push(crystal);
-//   updateThingSpritePos(crystal);
-//   return crystal;
-// }
 
 function makeGoal(tile, isTeamB) {
   if (!tile) fullStop("invalid tile to makeGoal");

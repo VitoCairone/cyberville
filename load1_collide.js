@@ -1,5 +1,5 @@
+// return time in units = time units of input velocity
 function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
-  // method return time units = time units of input velocity denominators
   
   // Relative position
   const Rab = [circleB[0] - circleA[0], circleB[1] - circleA[1]];
@@ -18,11 +18,8 @@ function whenWillCirclesCollide(circleA, circleB, aRad, bRad, Va, Vb) {
   const B = 2 * (Rab[0] * Vab[0] + Rab[1] * Vab[1]);
   
   var soln = solveQuadratic(A, B, C);
-
-  if (!soln) return Infinity;
-  var [t1, t2] = soln;
-  return t1 >= 0 && t2 >= 0 ? Math.min(t1, t2) : t1 >= 0 ? t1 : t2 >= 0 ? t2 :
-    Infinity;
+  if (!soln || !soln.some(val => val >= 0)) return Infinity;
+  return Math.min(...soln.filter(val => val >= 0));
 }
 
 function doCirclesOverlap(aCtr, bCtr, aRad, bRad) {
@@ -36,11 +33,11 @@ function doThingsOverlap(a, b) {
 }
   
 function whenWillThingsCollideTk(a, b) {
-  // velocity for a thing is in tiles/tick so this returns ticks
   return whenWillCirclesCollide(getCenter(a), getCenter(b), a.radius, b.radius,
     getVel(a), getVel(b));
 }
 
+// returns [float, float] or null
 function solveQuadratic(A, B, C) {
   if (A === 0) return B === 0 ? (C === 0 ? [0, 0] : null) : [-C / B, -C / B];
   if (C === 0) return [-B / A, 0];
@@ -53,6 +50,10 @@ function solveQuadratic(A, B, C) {
 }
 
 function separateOverlappers(a, b) {
+  // Ideally collision handling should prevent any overlaps
+  // so this function should never have to run
+  console.log("WARNING: called separateOverlappers");
+
   if (a.isCollideHalted || b.isCollideHalted) return false;
 
   const Rab = [getCenter(a)[0] - getCenter(b)[0], getCenter(a)[1] - getCenter(b)[1]];
@@ -68,33 +69,75 @@ function separateOverlappers(a, b) {
   moveThing(b, -moveVec[0] / 2, -moveVec[1] / 2, true);
 }
 
+function getPlantedIUJs(thing, atDx = 0, atDy = 0) {
+  let [cx, cy] = getCenter(thing);
+  cx += atDx;
+  cy += atDy;
+  let rad = thing.radius;
+  let loHiXY = [[cx - rad, cy - rad], [cx + rad, cy + rad]];
+  let loHiIJ = loHiXY.map(pt => pt.map(c => Math.floor(c)));
+  let plantedIUJs = [];
+
+  for (var i = loHiIJ[0][0]; i <= loHiIJ[1][0]; i++) {
+    for (var j = loHiIJ[0][1]; j <= loHiIJ[1][1]; j++) {
+      plantedIUJs.push(`${i}_${j}`);
+    }
+  }
+
+  return plantedIUJs;
+}
+
+function getSweepIUJs(thing) {
+  const [vx, vy] = getVel(thing);
+  const isPlanted = (vx == 0 && vy == 0);
+  if (isPlanted && thing.plantedIUJs) return thing.plantedIUJs;
+
+  const [cx, cy] = getCenter(thing);
+  const rad = thing.radius;
+  let [xLo, yLo, xHi, yHi] = [cx - rad, cy - rad, cx + rad, cy + rad];
+  xLo = Math.min(xLo, xLo + vx);
+  yLo = Math.min(yLo, yLo + vy);
+  xHi = Math.max(xHi, xHi + vx);
+  yHi = Math.max(yHi, yHi + vy);
+  let [iLo, jLo, iHi, jHi] = [xLo, yLo, xHi, yHi].map(val => Math.floor(val));
+
+  const iujs = [];
+  for (let i = iLo; i <= iHi; i++)
+    for (let j = jLo; j <= jHi; j++)
+      iujs.push(`${i}_${j}`);
+
+  thing.plantedIUJs = isPlanted ? iujs : null;
+
+  return iujs;
+}
+
 function tileBasedCollisions() {
   var collisions = [];
   var stills = world.towers; // exclude fountains for now
   var movers = world.navis.concat(world.minions).concat(world.shots);
 
   var allThings = stills.concat(movers).filter(x => x);
-  var thingsByTile = {};
+  var thingsByIUJ = {};
 
   allThings.forEach(thing => {
-    var freeSweepTiles = getTilesForSweep(thing);
+    // TODO: because we already check when moving navis acquire new occupancy
+    // in order to keep them constrained to tiles, we could extend that logic
+    // so that occupancy is only updated when it changes instead of
+    // being re-calculated here for every moving thing every tick
+    var freeSweepIUJs = getSweepIUJs(thing);
 
     var tested = {};
-    freeSweepTiles.forEach(tile => {
-      if (!tile) return fullStop("tile error in tileBasedCollisions");
-      var tileKey = `${tile.i}_${tile.j}`;
-
-      if (thingsByTile[tileKey]) {
-        var priors = thingsByTile[tileKey].filter(prior => !tested[prior]);
-        priors.forEach(prior => {
-          tested[prior] = true;
+    freeSweepIUJs.forEach(iuj => {
+      if (thingsByIUJ[iuj]) {
+        thingsByIUJ[iuj].filter(prior => !tested[prior]).forEach(prior => {
           var collideTk = whenWillThingsCollideTk(thing, prior);
-          // if (collideTk <= 0) fullStop(`collideTk=${collideTk}`);
           if (collideTk <= 1) collisions.push([prior, thing, collideTk]);
+          tested[prior] = true;
         });
-        thingsByTile[tileKey].push(thing);
+        thingsByIUJ[iuj].push(thing);
+      } else {
+        thingsByIUJ[iuj] = [thing];
       }
-      thingsByTile[tileKey] = [thing];
     });
   });
 
