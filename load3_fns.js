@@ -426,10 +426,12 @@ function moveThing(thing, dx, dy) {
 
 function updateCamera() {
   const camNavi = world.cameraNavi;
-  const camCtr = camNavi ? getCenter(camNavi) : canvSize.map(x => x/2);
+  if (!camNavi) return false;
+  const camCtr = getCenter(camNavi);
   var offX = canvSize[0] / 2 + (camCtr[1] - camCtr[0]) * 14;
   var offY = canvSize[1] / 2 + (camCtr[0] + camCtr[1]) * -7;
   worldLayer.style.transform = `translate(${offX}px, ${offY}px)`;
+  return true;
 }
 
 function updateThingSpritePos(thing) {
@@ -445,6 +447,7 @@ function updateThingSpritePos(thing) {
   thing.div.style.left = `${left}px`;
   thing.div.style.bottom =`${bottom}px`;
   thing.div.style.zIndex = `${Math.round((ctr[0] + ctr[1]) * 100)}`;
+  return true;
 }
 
 function updateThingSpeed(thing) {
@@ -463,24 +466,7 @@ function updateThingSpeed(thing) {
 
   let speed = refRunSpeed;
 
-  thing.effects ||= []; // TODO move this to makeThing
   travelEffs = thing.effects.filter(eff => eff.alter === "travel");
-
-  if (thing.kind === "minion") {
-    // TODO: set this on the world and update infrequently
-    var minionTravel;
-    var minsElapsed = Math.floor(world.tick / (30 * 60));
-    if (minsElapsed > 15) {
-      minionTravel = Math.min(minsElapsed - 15, 200);
-    } else if (minsElapsed > 10) {
-      minionTravel = 0;
-    } else if (minsElapsed > 5) {
-      minionTravel = -15 + (minsElapsed - 5) * 3;
-    } else {
-      minionTravel = -15
-    }
-    if (minionTravel) travelEffs.push({alter: "travel" , value: minionTravel});
-  }
 
   if (travelEffs.length) {
     var sum = travelEffs.reduce((sum, eff) => sum + eff.value, 0);
@@ -542,13 +528,11 @@ function pickupCrystal(navi, crystal) {
 }
 
 function removeThing(thing) {
+  // this flag is set for debugging. Don't intentially do anything
+  // with things after calling removeThing!
   thing.isRemoved = true;
+
   thing.div.remove();
-  var tile = thing.onTile;
-  // tile.contents = without(tile.contents, thing);
-  // TODO: collect a list of empty air tiles and remove those
-  // which are not needed at the end, to avoid removing tiles still in use
-  // if (tile.isAir && tile.contents.length === 0) removeTile(tile);
   var kindGroup = thing.kind + 's';
   world[kindGroup] = without(world[kindGroup], thing);
 }

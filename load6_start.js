@@ -54,6 +54,8 @@ var proto = makeNavi("proto", {
 proto.decide.pat = ["F2", "L1", "F3", "L1", "F4", "L1", "F5", "L1"];
 setFacingDir(proto, 3);
 
+world.cameraNavi = proto;
+
 // var rock = makeNavi("rock", {
 //   "stand": { nFrames: 1, size: [19, 32] },
 //   "walk": {
@@ -70,6 +72,8 @@ fountainStartIjs.forEach((ij, idx) => {
   makeFountain(getTileAtIj(ij[0], ij[1]), idx);
 });
 
+makeTower(getTileAtIj(10, 4), false);
+makeTower(getTileAtIj(36, 4), true);
 
 console.log(world.tileAt);
 makeGoal(getTileAtIj(0, 4), false);
