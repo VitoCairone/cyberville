@@ -2,13 +2,32 @@ const world = makeWorld();
 
 // note that makeGridToMap is oneToNine = true by default
 // e.g. every 1/0 becomes a group of 9 tiles or empty spaces
+// const zoneMap = `Tile Map
+// 1110000000000111
+// 1111111111111111
+// 1110000000000111`
 const zoneMap = `Tile Map
-1110000000000111
-1111111111111111
-1110000000000111`
+111
+111
+111
+010
+010
+010
+010
+010
+010
+010
+010
+010
+010
+010
+010
+111
+111
+111`
 
 // these are in actual tile coordinates AFTER oneToNine
-const fountainStartIjs = [[4, 4], [43, 4]];
+const fountainStartIjs = [[4, 4], [4, 43]];
 
 // const zoneMapBNRO1 = `Tile Map
 //   000111001010101010100000
@@ -72,12 +91,12 @@ fountainStartIjs.forEach((ij, idx) => {
   makeFountain(getTileAtIj(ij[0], ij[1]), idx);
 });
 
-makeTower(getTileAtIj(10, 4), false);
-makeTower(getTileAtIj(36, 4), true);
+makeTower(getTileAtIj(4, 10), false);
+makeTower(getTileAtIj(4, 45), true);
 
 console.log(world.tileAt);
-makeGoal(getTileAtIj(0, 4), false);
-makeGoal(getTileAtIj(47, 4), true);
+makeGoal(getTileAtIj(4, 0), false);
+makeGoal(getTileAtIj(4, 53), true);
 
 // deployMinion(world.fountains[0]);
 

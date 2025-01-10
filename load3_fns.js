@@ -47,7 +47,8 @@ function applyTickToThing(thing) {
         case 7: didReachCenter = across <= 0.5; break;
       }
       if (didReachCenter) {
-        setFacingDir(thing, (thing.facingDir + 2) % 8);
+        console.log("L50 turn")
+        setFacingDir(thing, (thing.facingDir + 4) % 8);
         thing.doTurnRightHere = false;
       }
     }
@@ -63,14 +64,17 @@ function applyTickToThing(thing) {
         removeThing(thing);
         return;
       } else {
+        console.log("L67 turn")
         let newDir;
         if (thing.facingDir & 1) {
-          newDir = (thing.facingDir + 6) % 8;
+          newDir = (thing.facingDir + 2) % 8;
           setFacingDir(thing, newDir);
         } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 1) % 8])) {
+          // TODO: doublecheck for consistancy here / unit test
           newDir = (thing.facingDir + 1) % 8;
           setFacingDir(thing, newDir);
         } else if (getTileAtShift(thing.onTile, shifts[(thing.facingDir + 7) % 8])) {
+          // TODO: doublecheck for consistancy here / unit test
           newDir = (thing.facingDir + 7) % 8;
           setFacingDir(thing, newDir);
         } else {

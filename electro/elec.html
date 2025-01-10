@@ -1,0 +1,138 @@
+<!-- TODO: this is LLM-based code as yet unverified for real world accuracy.
+ Add tests to show that results are correct in simplest 2-body scenarios at least -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charged Particle Simulation</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("particleCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Constants
+        const k_e = 8.9875e9; // Coulomb's constant (N·m²/C²)
+        const tickDuration = 1000 / 60; // Time per tick (milliseconds)
+        const particleLimit = 20; // Max particles for efficiency
+        const scale = 1e8; // Scaling factor for display
+
+        // Particle Class
+        class Particle {
+            constructor(x, y, z, radius, mass, charge, color) {
+                this.x = x; this.y = y; this.z = z;
+                this.vx = 0; this.vy = 0; this.vz = 0;
+                this.ax = 0; this.ay = 0; this.az = 0;
+                this.radius = radius; 
+                this.mass = mass; 
+                this.charge = charge;
+                this.color = color;
+            }
+
+            applyForce(fx, fy, fz) {
+                this.ax += fx / this.mass;
+                this.ay += fy / this.mass;
+                this.az += fz / this.mass;
+            }
+
+            updatePosition() {
+                this.vx += this.ax;
+                this.vy += this.ay;
+                this.vz += this.az;
+
+                this.x += this.vx;
+                this.y += this.vy;
+                this.z += this.vz;
+
+                this.ax = this.ay = this.az = 0; // Reset accelerations
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(
+                    canvas.width / 2 + this.x / scale,
+                    canvas.height / 2 - this.y / scale,
+                    this.radius, 0, 2 * Math.PI
+                );
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+        }
+
+        // Initialize Particles
+        const particles = [];
+
+        // Center heavy positive charge
+        particles.push(new Particle(0, 0, 0, 10, 1, 8, "red"));
+
+        // Surrounding lighter negative charges
+        const smallMass = 0.001; // 1 g
+        const smallCharge = -0.001; // -1 C
+        const radius = 5;
+        const distance = 100; // Initial radial distance from center
+
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+            particles.push(new Particle(x, y, 0, radius, smallMass, smallCharge, "blue"));
+        }
+
+        // // offset copy
+        // let copyParticles = [];
+        // particles.forEach(p => {
+        //   copyParticles.push(new Particle(p.x + 5.0e7, p.y, 0, p.radius, p.smallMass, p.smallCharge, p.color));
+        // });
+        // copyParticles.forEach(p => particles.push(p));
+
+        // Calculate Forces
+        function calculateForces() {
+            for (let i = 0; i < particles.length; i++) {
+                const p1 = particles[i];
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const dz = p2.z - p1.z;
+                    const distanceSquared = dx * dx + dy * dy + dz * dz;
+                    const distance = Math.sqrt(distanceSquared) + 1e-10; // Prevent divide by zero
+
+                    // Coulomb Force
+                    const force = (k_e * p1.charge * p2.charge) / distanceSquared;
+
+                    // Unit vector components
+                    const fx = force * (dx / distance);
+                    const fy = force * (dy / distance);
+                    const fz = force * (dz / distance);
+
+                    // Apply equal and opposite forces
+                    p1.applyForce(fx, fy, fz);
+                    p2.applyForce(-fx, -fy, -fz);
+                }
+            }
+        }
+
+        // Animation Loop using setInterval
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            calculateForces();
+            particles.forEach(p => {
+                p.updatePosition();
+                p.draw();
+            });
+        }
+
+        setInterval(animate, tickDuration); // Update at ~60 FPS
+    </script>
+</body>
+</html>
